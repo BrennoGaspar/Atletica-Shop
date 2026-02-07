@@ -2,10 +2,15 @@
 
 import { supabase } from "@/lib/supabase"
 import { useRouter } from 'next/navigation';
+import CustomAlert from "./customAlert";
+import { useState } from "react";
 
 export default function LoginForm() {
 
     const router = useRouter()
+
+    const [showAlert, setShowAlert] = useState(false)
+    const [alertConfig, setAlertConfig] = useState({ title: '', description: '' })
 
     async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault(); // evita recarregar a página e perder dados
@@ -23,16 +28,33 @@ export default function LoginForm() {
             if (data[0].age == age) {
                 router.push('/dashboard') // ToDo
             } else {
-                alert('❗IDADE ERRADA, TENTE NOVAMENTE❗')
+                setAlertConfig({
+                    title: "Idade incorreta",
+                    description: "A idade foi digitada incorretamente, tente novamente!"
+                })
+                setShowAlert(true)
             }
         } else {
-            alert('❗USUÁRIO NÃO ENCONTRADO, TENTE NOVAMENTE❗')
+            setAlertConfig({
+                    title: "Usuário não encontrado",
+                    description: "O usuário não foi encontrado em nosso sistema, tente novamente!"
+                })
+                setShowAlert(true)
         }
     }
 
     return (
 
         <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+
+            {showAlert && (
+                <CustomAlert 
+                    title={alertConfig.title} 
+                    description={alertConfig.description} 
+                    onClose={() => setShowAlert(false)} // Passaremos uma função para fechar
+                />
+            )}
+
             <div className="sm:mx-auto sm:w-full sm:max-w-sm">
                 <img src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500" alt="Your Company" className="mx-auto h-10 w-auto" />
                 <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-white">Acesse sua conta virtual</h2>
