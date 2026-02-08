@@ -5,63 +5,26 @@ import { useRouter } from 'next/navigation';
 import CustomAlert from "./customAlert";
 import { useState } from "react";
 
-export default function LoginForm() {
+interface Props {
+    title: string
+    buttonMessage: string
+    button: boolean
+    onSubmitAction: (event: React.FormEvent<HTMLFormElement>) => void
+}
 
-    const router = useRouter()
-
-    const [showAlert, setShowAlert] = useState(false)
-    const [alertConfig, setAlertConfig] = useState({ title: '', description: '' })
-
-    async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault(); // evita recarregar a página e perder dados
-
-        const formData = new FormData(event.currentTarget);
-        const name = formData.get('name') as string;
-        const age = Number(formData.get('age'));
-
-        const { data, error } = await supabase
-            .from('users')
-            .select('age')
-            .eq('name', name);
-
-        if ( data && data.length > 0 ) {
-            if (data[0].age == age) {
-                router.push('/dashboard') // ToDo
-            } else {
-                setAlertConfig({
-                    title: "Idade incorreta",
-                    description: "A idade foi digitada incorretamente, tente novamente!"
-                })
-                setShowAlert(true)
-            }
-        } else {
-            setAlertConfig({
-                    title: "Usuário não encontrado",
-                    description: "O usuário não foi encontrado em nosso sistema, tente novamente!"
-                })
-                setShowAlert(true)
-        }
-    }
+export default function LoginForm({ title, buttonMessage, button, onSubmitAction }: Props) {
 
     return (
 
         <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
 
-            {showAlert && (
-                <CustomAlert 
-                    title={alertConfig.title} 
-                    description={alertConfig.description} 
-                    onClose={() => setShowAlert(false)} // Passaremos uma função para fechar
-                />
-            )}
-
             <div className="sm:mx-auto sm:w-full sm:max-w-sm">
                 <img src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500" alt="Your Company" className="mx-auto h-10 w-auto" />
-                <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-white">Acesse sua conta virtual</h2>
+                <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-white">{title}</h2>
             </div>
 
             <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-                <form onSubmit={handleLogin} className="space-y-6">
+                <form onSubmit={onSubmitAction} className="space-y-6">
                     <div>
                         <label htmlFor="email" className="block text-sm/6 font-medium text-gray-100">Nome</label>
                         <div className="mt-2">
@@ -77,19 +40,21 @@ export default function LoginForm() {
                                 </div> */}
                         </div>
                         <div className="mt-2">
-                            <input id="password" type="password" name="age" required autoComplete="current-password" className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" />
+                            <input id="password" type="number" name="age" required autoComplete="current-password" className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" />
                         </div>
                     </div>
 
                     <div>
-                        <button type="submit" className="flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">Entrar</button>
+                        <button type="submit" className="flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">{buttonMessage}</button>
                     </div>
                 </form>
 
-                <p className="mt-10 text-center text-sm/6 text-gray-400">
+                {button &&
+                    <p className="mt-10 text-center text-sm/6 text-gray-400">
                     Ainda não tem registro?
-                    <a href="#" className="font-semibold text-indigo-400 hover:text-indigo-300"> Cadastre-se</a>
-                </p>
+                        <a href="/singup" className="font-semibold text-indigo-400 hover:text-indigo-300"> Cadastre-se</a>
+                    </p>
+                }
             </div>
         </div>
 
