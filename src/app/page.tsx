@@ -26,7 +26,7 @@ export default function Home() {
 
     if (data && data.length > 0) {
       if (data[0].age == age) {
-        router.push('/dashboard') // ToDo
+        router.push('/store')
       } else {
           setAlertConfig({ show: true, title: 'Idade Incorreta', desc: 'A idade está incorreta, tente novamente!' });
       }
