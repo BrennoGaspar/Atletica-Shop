@@ -16,22 +16,32 @@ export default function Home() {
     event.preventDefault(); // evita recarregar a página e perder dados
 
     const formData = new FormData(event.currentTarget);
-    const name = formData.get('name') as string;
-    const age = Number(formData.get('age'));
+    const nameForm = formData.get('name') as string;
+    const ageForm = formData.get('age') as string;
 
     const { data, error } = await supabase
       .from('users')
-      .select('age')
-      .eq('name', name);
+      .select('*')
+      .eq('name', nameForm)
+      .eq('age', ageForm)
+      .maybeSingle();
 
-    if (data && data.length > 0) {
-      if (data[0].age == age) {
-        router.push('/store')
-      } else {
-          setAlertConfig({ show: true, title: 'Idade Incorreta', desc: 'A idade está incorreta, tente novamente!' });
-      }
+    if (error) {
+      setAlertConfig({ show: true, title: 'Erro de Conexão', desc: 'Não foi possível consultar o banco, consulte o suporte!' });
+      console.error(error);
+      return;
+    }
+
+    if (data) {
+      // Se encontrou o registro, os dados conferem
+      router.push('/store');
     } else {
-        setAlertConfig({ show: true, title: 'Usuário não encontrado', desc: 'O usuário não foi encontrado em nosso sistema, tente novamente!' });
+      // Se não encontrou, o e-mail ou a senha estão errados
+      setAlertConfig({ 
+        show: true, 
+        title: 'Acesso Negado', 
+        desc: 'E-mail e/ou senha incorretos. Verifique os dados e tente novamente!' 
+      });
     }
   }
 
