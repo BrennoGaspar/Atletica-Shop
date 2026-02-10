@@ -13,7 +13,7 @@ export default function SignUp() {
     const [alertConfig, setAlertConfig] = useState({ show: false, title: '', desc: '' });
 
     async function handleSingUp(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault(); // evita recarregar a página e perder dados
+        event.preventDefault(); // don't reload the page
 
         const formData = new FormData(event.currentTarget);
         const nameForm = formData.get('name') as string;

@@ -13,7 +13,7 @@ export default function Home() {
   const [alertConfig, setAlertConfig] = useState({ show: false, title: '', desc: '' });
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); // evita recarregar a página e perder dados
+    event.preventDefault(); // don't reload the page
 
     const formData = new FormData(event.currentTarget);
     const nameForm = formData.get('name') as string;
@@ -24,7 +24,6 @@ export default function Home() {
       .select('*')
       .eq('name', nameForm)
       .eq('age', ageForm)
-      .maybeSingle();
 
     if (error) {
       setAlertConfig({ show: true, title: 'Erro de Conexão', desc: 'Não foi possível consultar o banco, consulte o suporte!' });
@@ -32,11 +31,10 @@ export default function Home() {
       return;
     }
 
-    if (data) {
-      // Se encontrou o registro, os dados conferem
+    if (data && data.length > 0) {
+      localStorage.setItem('session:user', JSON.stringify(data))
       router.push('/store');
     } else {
-      // Se não encontrou, o e-mail ou a senha estão errados
       setAlertConfig({ 
         show: true, 
         title: 'Acesso Negado', 
@@ -44,6 +42,15 @@ export default function Home() {
       });
     }
   }
+
+  useEffect(() => {
+    const session = localStorage.getItem('session:user');
+    
+    if (!session) {
+      // if not have session, return to LoginPage
+      router.push('/');
+    }
+  }, [router]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
