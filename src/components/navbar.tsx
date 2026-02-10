@@ -3,6 +3,8 @@ import { Bars3Icon, BellIcon, ShoppingBagIcon, XMarkIcon } from '@heroicons/reac
 import PersonalCart from './cart'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import minhaImagem from '@/assets/default_user.jpg'
 
 const navigation = [
     { name: 'Loja', href: '#', current: true },
@@ -82,9 +84,9 @@ export default function NavBar({ onOpenCart }: NavBarProps) {
                             <MenuButton className="relative flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
                                 <span className="absolute -inset-1.5" />
                                 <span className="sr-only">Abrir menu do usuário</span>
-                                <img
+                                <Image
                                     alt=""
-                                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                                    src={minhaImagem}
                                     className="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
                                 />
                             </MenuButton>

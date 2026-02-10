@@ -7,9 +7,11 @@ interface ProductProps {
     name: string;
     price: number;
     imageUrl?: string;
+    onAddClick: () => void;
 }
 
-export default function ProductCard({ id, name, price, imageUrl }: ProductProps) {
+export default function ProductCard({ id, name, price, imageUrl, onAddClick }: ProductProps) {
+
     return (
         <div className="group bg-slate-900 flex flex-col p-5 w-full max-w-[320px] rounded-2xl border border-slate-800 shadow-xl transition-all duration-300 hover:border-indigo-500/50 hover:shadow-indigo-500/10">
             
@@ -34,13 +36,19 @@ export default function ProductCard({ id, name, price, imageUrl }: ProductProps)
                 </div>
             </div>
 
-            <button className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-900/20">
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onAddClick();
+                }}
+                className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-900/20"
+            >
                 <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-12deg)_translateX(-100%)] group-hover:duration-700 group-hover:[transform:skew(-12deg)_translateX(100%)]">
                     <div className="relative h-full w-10 bg-white/20" />
                 </div>
 
                 <ShoppingBagIcon className="size-5 transition-transform group-hover:-rotate-12" />
-                <span>Comprar Agora</span>
+                <span>Adicionar na sacola</span>
             </button>
         </div>
     )
