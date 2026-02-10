@@ -4,45 +4,8 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
-
-const products = [
-  {
-    id: 1,
-    name: 'Throwback Hip Bag',
-    href: '#',
-    color: 'Salmon',
-    price: '$90.00',
-    quantity: 1,
-    imageSrc: 'https://tailwindcss.com/plus-assets/img/ecommerce-images/shopping-cart-page-04-product-01.jpg',
-    imageAlt: 'Salmon orange fabric pouch with match zipper, gray zipper pull, and adjustable hip belt.',
-  },
-  {
-    id: 2,
-    name: 'Medium Stuff Satchel',
-    href: '#',
-    color: 'Blue',
-    price: '$32.00',
-    quantity: 1,
-    imageSrc: 'https://tailwindcss.com/plus-assets/img/ecommerce-images/shopping-cart-page-04-product-02.jpg',
-    imageAlt:
-      'Front of satchel with blue canvas body, black straps and handle, drawstring top, and front zipper pouch.',
-  },
-  {
-    id: 3,
-    name: 'Zip Tote Basket',
-    href: '#',
-    color: 'White and black',
-    price: '$140.00',
-    quantity: 1,
-    imageSrc: 'https://tailwindcss.com/plus-assets/img/ecommerce-images/shopping-cart-page-04-product-03.jpg',
-    imageAlt: 'Front of zip tote bag with white canvas, black canvas straps and handle, and black zipper pulls.',
-  },
-]
-
-const userId = 1
-let dataGeneral: any[]
-
-
+import Image from 'next/image'
+import minhaImagem from '@/assets/aaaach.jpg'
 
 interface CartProps {
   open: boolean;
@@ -52,8 +15,29 @@ interface CartProps {
 export default function PersonalCart({ open, setOpen }: CartProps) {
 
   const [cartItems, setCartItems] = useState<any[]>([])
+  const [user, setUser] = useState<any>(null)
 
+  // SESSION USER
+  useEffect(() => {
+    const savedUser = localStorage.getItem('session:user');
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      
+      // parsed returns an Array
+      if (Array.isArray(parsed)) {
+        setUser(parsed[0]); 
+      } else {
+        setUser(parsed);
+      }
+    }
+  }, []);
+
+  // SHOPPING CART
   async function FetchData() {
+
+  const actualId = Array.isArray(user) ? user[0]?.id : user?.id;
+  if (!actualId) return;
+
   const { data, error } = await supabase
     .from('cart_items')
     .select(`
@@ -65,24 +49,40 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
         price
       )
     `)
-    .eq('user_id', userId)
+    .eq('user_id', actualId)
 
   if (error) {
     console.log('Erro ao carregar carrinho: ', error)
     return
-  } else {
-    console.log(data)
   }
 
   setCartItems(data || []);
 }
 
-  useEffect(() => {
-    if( open ){
-      FetchData()
-    }
-  }, [open])
+  // REMOVE ITEM SHOPPING CART
+  async function handleRemove(id: number) {
+    const { error } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('id', id);
 
+    if (error) {
+      console.error("Erro ao remover:", error);
+      return;
+    }
+
+    // REMOVE WITHOUT REFRESH
+    setCartItems((current) => current.filter((item) => item.id !== id));
+  }
+
+  // USE EFFECT
+  useEffect(() => {
+    if (open && user?.id) {
+      FetchData();
+    }
+  }, [open, user]);
+
+  // CALC OF SUBTOTAL
   const subtotal = cartItems.reduce((acc, item) => {
     return acc + (item.products?.price * item.quantity)
   }, 0)
@@ -125,7 +125,7 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
                           {cartItems.map((item) => (
                             <li key={item.id} className="flex py-6">
                               <div className="size-24 shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                <img alt='Imagem' src='' className="size-full object-cover" />
+                                <Image alt='Imagem' src={minhaImagem || 'https://placehold.co/150'} className="size-full object-cover" />
                               </div>
 
                               <div className="ml-4 flex flex-1 flex-col">
@@ -133,14 +133,14 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
                                   <h3>
                                     <a>{item.products.name}</a>
                                   </h3>
-                                  <p className="ml-4">{item.products.price}</p>
+                                  <p className="ml-4">R$ {(item.products.price * item.quantity).toFixed(2)}</p>
                                 </div>
                                 <div className="flex flex-1 items-end justify-between text-sm">
-                                  <p className="text-gray-500">Qty {item.quantity}</p>
+                                  <p className="text-gray-500">Quantidade: {item.quantity}</p>
 
                                   <div className="flex">
-                                    <button type="button" className="font-medium text-indigo-600 hover:text-indigo-500">
-                                      Remove
+                                    <button type="button" onClick={() => handleRemove(item.id)} className="font-medium text-indigo-600 hover:text-indigo-500">
+                                      Remover
                                     </button>
                                   </div>
                                 </div>
@@ -155,9 +155,8 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
                   <div className="border-t border-gray-200 px-4 py-6 sm:px-6">
                     <div className="flex justify-between text-base font-medium text-gray-900">
                       <p>Total</p>
-                      <p>R${subtotal}</p>
+                      <p>R${subtotal.toFixed(2)}</p>
                     </div>
-                    <p className="mt-0.5 text-sm text-gray-500">Shipping and taxes calculated at checkout.</p>
                     <div className="mt-6">
                       <a
                         href="#"
@@ -175,7 +174,4 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
       </Dialog>
     </div>
   )
-}
-function setCartItems(arg0: any[]) {
-  throw new Error('Function not implemented.')
 }
