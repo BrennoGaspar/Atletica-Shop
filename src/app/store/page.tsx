@@ -1,8 +1,10 @@
 'use client'
 
+import CustomAlertTimer from '@/components/alert'
 import PersonalCart from '@/components/cart'
 import ProductCard from '@/components/itemField'
 import NavBar from '@/components/navbar'
+import QuantityModal from '@/components/quantityModal'
 import { supabase } from '@/lib/supabase'
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline'
@@ -13,6 +15,14 @@ export default function StorePage() {
 
   const router = useRouter()  
 
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [products, setProducts] = useState<any[]>([]) 
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0);
+  const sucessType = true
+
   // SESSION
   useEffect(() => {
     const session = localStorage.getItem('session:user');
@@ -20,8 +30,6 @@ export default function StorePage() {
       router.push('/');
     }
   }, []);
-
-  const [products, setProducts] = useState<any[]>([])
 
   async function Fetch() {
     const { data, error } = await supabase
@@ -39,7 +47,79 @@ export default function StorePage() {
     Fetch()
   }, [])
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  // ADD ITEM TO CART WITH POP-UP
+  const handleAddToCartClick = (product: any) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  async function refreshCartCount() {
+    const sessionData = localStorage.getItem('session:user');
+    const userList = sessionData ? JSON.parse(sessionData) : null;
+    const userId = Array.isArray(userList) ? userList[0]?.id : userList?.id;
+
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from('cart_items')
+      .select('quantity')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error("Erro ao atualizar contador:", error);
+      return;
+    }
+
+    const totalItems = data?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+    
+    setCartCount(totalItems); 
+  }
+
+  const confirmAddToCart = async (quantity: number) => {
+    const sessionData = localStorage.getItem('session:user');
+    const userList = sessionData ? JSON.parse(sessionData) : null;
+    const userId = Array.isArray(userList) ? userList[0]?.id : userList?.id;
+
+    if (!userId || !selectedProduct) return;
+
+    const { data: existingItem, error: fetchError } = await supabase
+      .from('cart_items')
+      .select('id, quantity')
+      .eq('user_id', userId)
+      .eq('product_id', selectedProduct.id)
+      .single();
+
+    if (existingItem) {
+      const { error: updateError } = await supabase
+        .from('cart_items')
+        .update({ quantity: existingItem.quantity + quantity })
+        .eq('id', existingItem.id)
+
+      if (updateError) console.error("Erro ao atualizar:", updateError)
+      else {
+        setIsModalOpen(false)
+        setIsAlertOpen(true)
+        refreshCartCount()
+      }
+
+    } else {
+
+      const { error } = await supabase
+        .from('cart_items')
+        .insert({
+          user_id: userId,
+          product_id: selectedProduct.id,
+          quantity: quantity
+        });
+
+      if (error) {
+        console.error("Erro ao inserir: ", error);
+      } else {
+        setIsModalOpen(false)
+        setIsAlertOpen(true)
+      }
+    }
+  }
 
   return (
 
@@ -60,16 +140,43 @@ export default function StorePage() {
                 id={product.id}
                 name={product.name}
                 price={product.price}
+                onAddClick={() => handleAddToCartClick(product)}
               />
             ))}
 
             {/* if the database is empty */}
             {products.length === 0 && (
-              <p className="text-slate-400">Carregando produtos ou estoque vazio...</p>
+              <div className='flex gap-4'>
+                {/* LOADING - BLUE */}
+                <svg aria-hidden="true" className="inline w-8 h-8 animate-spin text-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path 
+                        d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" 
+                        fill="rgba(0,0,0,0.1)" 
+                    />
+                    <path 
+                        d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" 
+                        fill="currentColor"
+                    />
+                </svg>
+                <p className="text-slate-400">Carregando produtos ou estoque vazio...</p>
+              </div>
             )}
           </div>
         </div>
       </main>
+
+      <QuantityModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmAddToCart}
+        productName={selectedProduct?.name || ''}
+      />
+
+      <CustomAlertTimer open={isAlertOpen} setOpen={setIsAlertOpen}
+        title='Sucesso!'
+        description='Item adicionado à sacola'
+        sucessType={sucessType}
+      />
     </>
   )
 }
