@@ -1,20 +1,37 @@
 import Image from 'next/image'
 import minhaImagem from '@/assets/aaaach.jpg'
-import { ShoppingBagIcon } from '@heroicons/react/24/outline'
+import { ShoppingBagIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 interface ProductProps {
     id: number
-    name: string;
-    price: number;
-    imageUrl?: string;
-    onAddClick: () => void;
+    name: string
+    price: number
+    imageUrl?: string
+    isAdmin: boolean
+    onAddClick: () => void
+    onDeleteClick: () => void
 }
 
-export default function ProductCard({ id, name, price, imageUrl, onAddClick }: ProductProps) {
+export default function ProductCard({ id, name, price, imageUrl, isAdmin, onAddClick, onDeleteClick }: ProductProps) {
 
     return (
-        <div className="group bg-slate-900 flex flex-col p-5 w-full max-w-[320px] rounded-2xl border border-slate-800 shadow-xl transition-all duration-300 hover:border-indigo-500/50 hover:shadow-indigo-500/10">
+        <div className="relative group bg-slate-900 flex flex-col p-5 w-full max-w-[320px] rounded-2xl border border-slate-800 shadow-xl transition-all duration-300 hover:border-indigo-500/50 hover:shadow-indigo-500/10">
             
+            {/* Delete Button */}
+            { isAdmin && (
+                <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteClick();
+                    }}
+                    className="absolute top-3 right-3 z-10 p-2.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-500 hover:text-white shadow-lg shadow-red-500/20 active:scale-90"
+                    title="Remover Item"
+                >
+                    <TrashIcon className="size-5" />
+                </button>
+            )}
+
+            {/* Image Container */}
             <div className="relative aspect-square w-full mb-4 overflow-hidden rounded-xl bg-slate-800">
                 <Image 
                     src={minhaImagem} 
@@ -24,6 +41,7 @@ export default function ProductCard({ id, name, price, imageUrl, onAddClick }: P
                 />
             </div>
 
+            {/* Product Informations */}
             <div className="flex flex-col gap-1 px-1">
                 <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Atlética</span>
                 <h3 className="text-white font-bold text-xl truncate">{name}</h3>
@@ -36,6 +54,7 @@ export default function ProductCard({ id, name, price, imageUrl, onAddClick }: P
                 </div>
             </div>
 
+            {/* Buy Button */}
             <button 
                 onClick={(e) => {
                     e.stopPropagation();

@@ -1,7 +1,5 @@
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Bars3Icon, BellIcon, ShoppingBagIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import PersonalCart from './cart'
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import minhaImagem from '@/assets/default_user.jpg'

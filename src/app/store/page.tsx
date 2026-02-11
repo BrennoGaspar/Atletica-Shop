@@ -6,8 +6,7 @@ import ProductCard from '@/components/itemField'
 import NavBar from '@/components/navbar'
 import QuantityModal from '@/components/quantityModal'
 import { supabase } from '@/lib/supabase'
-import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react'
 
@@ -141,6 +140,8 @@ export default function StorePage() {
                 name={product.name}
                 price={product.price}
                 onAddClick={() => handleAddToCartClick(product)}
+                onDeleteClick={() => {}}
+                isAdmin={false}
               />
             ))}
 

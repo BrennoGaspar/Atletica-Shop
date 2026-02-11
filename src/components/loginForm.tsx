@@ -1,10 +1,5 @@
 "use client"
 
-import { supabase } from "@/lib/supabase"
-import { useRouter } from 'next/navigation';
-import CustomAlert from "./customAlert";
-import { useState } from "react";
-
 interface Props {
     title: string
     buttonMessage: string

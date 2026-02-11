@@ -12,6 +12,9 @@ module.exports = {
           '0%': { width: '100%' },
           '100%': { width: '0%' },
         },
+        shimmer: {
+        '100%': { transform: 'translateX(100%)' },
+        },
       },
       animation: {
         shrink: 'shrink 3s linear forwards',
