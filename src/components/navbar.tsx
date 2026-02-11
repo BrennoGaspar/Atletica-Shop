@@ -22,6 +22,7 @@ export default function NavBar({ onOpenCart }: NavBarProps) {
 
     function handleLogOut(){
         localStorage.removeItem('session:user')
+        localStorage.removeItem('session:admin')
         router.push('/')
         window.location.reload()
     }
