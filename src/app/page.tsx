@@ -1,4 +1,4 @@
-'use client' // Como é um teste simples de botão, usamos Client Component
+'use client'
 
 import CustomAlert from '@/components/customAlert';
 import LoginForm from '@/components/loginForm'
@@ -32,8 +32,13 @@ export default function Home() {
     }
 
     if (data && data.length > 0) {
-      localStorage.setItem('session:user', JSON.stringify(data))
-      router.push('/store');
+      if( data[0].adm == false ){
+        localStorage.setItem('session:user', JSON.stringify(data))
+        router.push('/store')
+      } else {
+        localStorage.setItem('session:admin', JSON.stringify(data))
+        router.push('/admin')
+      }
     } else {
       setAlertConfig({ 
         show: true, 
