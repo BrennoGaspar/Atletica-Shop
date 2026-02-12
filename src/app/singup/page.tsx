@@ -1,6 +1,6 @@
 'use client' // Como é um teste simples de botão, usamos Client Component
 
-import CustomAlert from '@/components/customAlert';
+import CustomAlert from '@/components/customNotify';
 import LoginForm from '@/components/loginForm'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation';

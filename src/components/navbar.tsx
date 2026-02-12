@@ -1,25 +1,35 @@
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Bars3Icon, BellIcon, ShoppingBagIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import minhaImagem from '@/assets/default_user.jpg'
-
-const navigation = [
-    { name: 'Loja', href: '#', current: true },
-]
 
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(' ')
 }
 
 interface NavBarProps {
-    onOpenCart: () => void;
+    onOpenCart: () => void
+    isAdmin: boolean
 }
 
-export default function NavBar({ onOpenCart }: NavBarProps) {
+export default function NavBar({ onOpenCart, isAdmin }: NavBarProps) {
 
     const router = useRouter() 
+    const pathname = usePathname()
 
+    let navigation = []
+
+    isAdmin ? navigation = [
+            { name: 'Loja', href: ('/admin') },
+            { name: 'Compras', href: ('/admin/purchased') },
+        ] : 
+        navigation = [
+            { name: 'Loja', href: '#' },
+        ]
+    
+
+    // LOG OUT SYSTEM   
     function handleLogOut(){
         localStorage.removeItem('session:user')
         localStorage.removeItem('session:admin')
@@ -53,19 +63,25 @@ export default function NavBar({ onOpenCart }: NavBarProps) {
                         </div>
                         <div className="hidden sm:ml-6 sm:block">
                             <div className="flex space-x-4">
-                                {navigation.map((item) => (
-                                    <a
-                                        key={item.name}
-                                        href={item.href}
-                                        aria-current={item.current ? 'page' : undefined}
-                                        className={classNames(
-                                            item.current ? 'bg-gray-950/50 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                                            'rounded-md px-3 py-2 text-sm font-medium',
-                                        )}
-                                    >
-                                        {item.name}
-                                    </a>
-                                ))}
+                                {navigation.map((item) => {
+                                    const isCurrent = pathname === item.href
+
+                                    return (
+                                        <a
+                                            key={item.name}
+                                            href={item.href}
+                                            aria-current={isCurrent ? 'page' : undefined}
+                                            className={classNames(
+                                                isCurrent 
+                                                    ? 'bg-gray-950 text-white' 
+                                                    : 'text-gray-300 hover:bg-white/5 hover:text-white',
+                                                'rounded-md px-3 py-2 text-sm font-medium transition-colors'
+                                            )}
+                                        >
+                                            {item.name}
+                                        </a>
+                                    )
+                                })}
                             </div>
                         </div>
                     </div>
@@ -110,20 +126,22 @@ export default function NavBar({ onOpenCart }: NavBarProps) {
 
             <DisclosurePanel className="sm:hidden">
                 <div className="space-y-1 px-2 pt-2 pb-3">
-                    {navigation.map((item) => (
-                        <DisclosureButton
-                            key={item.name}
-                            as="a"
-                            href={item.href}
-                            aria-current={item.current ? 'page' : undefined}
-                            className={classNames(
-                                item.current ? 'bg-gray-950/50 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                                'block rounded-md px-3 py-2 text-base font-medium',
-                            )}
-                        >
-                            {item.name}
-                        </DisclosureButton>
-                    ))}
+                    {navigation.map((item) => {
+                        const isCurrent = pathname === item.href
+                        return (
+                            <DisclosureButton
+                                key={item.name}
+                                as="a"
+                                href={item.href}
+                                className={classNames(
+                                    isCurrent ? 'bg-gray-950 text-white' : 'text-gray-300 hover:bg-white/5',
+                                    'block rounded-md px-3 py-2 text-base font-medium'
+                                )}
+                            >
+                                {item.name}
+                            </DisclosureButton>
+                        )
+                    })}
                 </div>
             </DisclosurePanel>
         </Disclosure>

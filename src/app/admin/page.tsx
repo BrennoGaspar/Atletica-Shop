@@ -70,7 +70,6 @@ export default function StorePage() {
 
         if (!error) {
             setProducts(products.filter(p => p.id !== itemToDelete.id));
-            // Opcional: Mostrar seu CustomAlert de sucesso aqui!
         }
     }
 
@@ -78,7 +77,7 @@ export default function StorePage() {
 
         <>
             <header>
-                <NavBar onOpenCart={() => { }} />
+                <NavBar onOpenCart={() => { }} isAdmin={true}/>
 
             </header>
             <main>
@@ -87,7 +86,7 @@ export default function StorePage() {
 
                     <button
                         className='group relative flex items-center mb-6 px-6 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-indigo-500/50 border border-white/10 overflow-hidden'
-                        onClick={() => { router.push('/addItem') }}
+                        onClick={() => { router.push('/admin/addItem') }}
                     >
                         <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] transition-transform" />
 
