@@ -38,6 +38,7 @@ export default function StorePage() {
     if (error) {
       console.log('ERRO: ', error)
     } else {
+      console.log('DADOS DO BANCO: ', data)
       setProducts(data || [])
     }
   }
@@ -139,6 +140,8 @@ export default function StorePage() {
                 id={product.id}
                 name={product.name}
                 price={product.price}
+                quantity={product.quantity}
+                imageUrl={product.imageUrl}
                 onAddClick={() => handleAddToCartClick(product)}
                 onDeleteClick={() => {}}
                 isAdmin={false}

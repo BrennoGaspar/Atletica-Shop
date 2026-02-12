@@ -16,14 +16,14 @@ export default function Home() {
     event.preventDefault(); // don't reload the page
 
     const formData = new FormData(event.currentTarget);
-    const nameForm = formData.get('name') as string;
-    const ageForm = formData.get('age') as string;
+    const emailForm = formData.get('email') as string;
+    const passwordForm = formData.get('password') as string;
 
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('name', nameForm)
-      .eq('age', ageForm)
+      .eq('email', emailForm)
+      .eq('password', passwordForm)
 
     if (error) {
       setAlertConfig({ show: true, title: 'Erro de Conexão', desc: 'Não foi possível consultar o banco, consulte o suporte!' });

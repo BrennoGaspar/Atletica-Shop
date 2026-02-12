@@ -102,6 +102,8 @@ export default function StorePage() {
                                 id={product.id}
                                 name={product.name}
                                 price={product.price}
+                                quantity={product.quantity}
+                                imageUrl={product.imageUrl}
                                 onAddClick={() => { }}
                                 onDeleteClick={() => triggerDelete(product.id, product.name)}
                                 isAdmin={true}
