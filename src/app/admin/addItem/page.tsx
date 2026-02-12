@@ -38,11 +38,11 @@ export default function StorePage() {
   return (
     <>
       <header>
-        <NavBar onOpenCart={() => {}} />
+        <NavBar onOpenCart={() => {}} isAdmin={true} />
       </header>
       
       <main className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-black px-4">
-        {/* Card do Formulário */}
+        {/* Form Card */}
         <div className="w-full max-w-md bg-gray-900/50 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-2xl">
           
           <div className="mb-8">
@@ -51,7 +51,6 @@ export default function StorePage() {
           </div>
 
           <form className="space-y-5" onSubmit={AddData}>
-            {/* Campo: Nome */}
             <div className="space-y-2">
               <label htmlFor="name" className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
                 Nome do Produto
@@ -66,7 +65,6 @@ export default function StorePage() {
               />
             </div>
 
-            {/* Campo: Preço */}
             <div className="space-y-2">
               <label htmlFor="price" className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
                 Valor (R$)
@@ -85,7 +83,6 @@ export default function StorePage() {
               </div>
             </div>
 
-            {/* Botão de Submit */}
             <div className="pt-4">
               <button 
                 type="submit" 

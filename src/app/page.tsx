@@ -1,6 +1,6 @@
 'use client'
 
-import CustomAlert from '@/components/customAlert';
+import CustomAlert from '@/components/customNotify';
 import LoginForm from '@/components/loginForm'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation';

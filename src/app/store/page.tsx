@@ -124,7 +124,7 @@ export default function StorePage() {
 
     <>
       <header>
-        <NavBar onOpenCart={() => setIsCartOpen(true)} />
+        <NavBar onOpenCart={() => setIsCartOpen(true)} isAdmin={false}/>
 
         <PersonalCart open={isCartOpen} setOpen={setIsCartOpen} />
       </header>
