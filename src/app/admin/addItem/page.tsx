@@ -23,10 +23,12 @@ export default function StorePage() {
     const formData = new FormData(event.currentTarget);
     const nameForm = formData.get('name') as string;
     const priceForm = Number(formData.get('price'));
+    const urlForm = formData.get('image_url') as string;
+    const quantityForm = formData.get('quantity') as string;
 
     const { error } = await supabase
         .from('products')
-        .insert({ name: nameForm, price: priceForm })
+        .insert({ name: nameForm, price: priceForm, image_url: urlForm, quantity: quantityForm })
 
     if( error ){
         console.log('Erro ao adicionar novo item: ', error)
@@ -79,6 +81,38 @@ export default function StorePage() {
                   placeholder="0,00"
                   required 
                   className="block w-full rounded-xl bg-white/5 border border-white/10 pl-10 pr-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="image_url" className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
+                URL da Imagem
+              </label>
+              <div className="relative">
+                <input 
+                  id="image_url" 
+                  type="text" 
+                  name="image_url" 
+                  placeholder="URL da imagem do produto"
+                  required 
+                  className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="quantity" className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
+                Quantidade
+              </label>
+              <div className="relative">
+                <input 
+                  id="quantity" 
+                  type="number" 
+                  name="quantity" 
+                  placeholder="1"
+                  required 
+                  className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none" 
                 />
               </div>
             </div>

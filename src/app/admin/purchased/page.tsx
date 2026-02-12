@@ -61,7 +61,7 @@ export default function StorePage() {
     }
   }
 
-  // Lógica para transformar os pedidos em dados para o gráfico
+  // Transform the orders for the graphic
   const chartData = useMemo(() => {
     const dailyData = orders.reduce((acc: any, order) => {
       const date = new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -72,7 +72,7 @@ export default function StorePage() {
       return acc;
     }, {});
 
-    // Converte o objeto em array e inverte para ordem cronológica (esquerda -> direita)
+    // Convert the date
     return Object.keys(dailyData).map(date => ({
       date,
       valor: dailyData[date]
@@ -89,7 +89,7 @@ export default function StorePage() {
         <div>
           <h1 className="text-white text-2xl font-bold mb-6">Dashboard de Vendas</h1>
           
-          {/* SEÇÃO DO GRÁFICO */}
+          {/* Graphic */}
           <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-xl">
             <h2 className="text-gray-400 text-sm font-medium mb-4 uppercase tracking-wider">Renda Diária (R$)</h2>
             <div className="h-[300px] w-full">
@@ -141,7 +141,7 @@ export default function StorePage() {
           </div>
         </div>
 
-        {/* TABELA DE PEDIDOS (Mantida do passo anterior) */}
+        {/* Items for table */}
         <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-white/10 bg-gray-900">
           <table className="w-full text-sm text-left text-gray-400">
             <thead className="text-xs text-gray-300 uppercase bg-gray-800/50">
