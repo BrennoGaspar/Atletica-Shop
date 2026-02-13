@@ -1,6 +1,6 @@
 # 🏅 Atlética Shop (A.A.A.A.C.H)
 
-Sistema full-stack robusto desenvolvido para a gestão de vendas e controle de estoque de produtos da atlética universitária. O projeto oferece uma experiência completa desde a vitrine de produtos até o painel administrativo para controle financeiro.
+Sistema full-stack robusto desenvolvido para a gestão de vendas e controle de estoque de produtos da atlética universitária. O projeto oferece uma experiência completa desde a vitrine de produtos até o painel administrativo para controle financeiro e automação de pagamentos.
 
 ---
 
@@ -10,32 +10,45 @@ Sistema full-stack robusto desenvolvido para a gestão de vendas e controle de e
 * **Linguagem**: [TypeScript](https://www.typescriptlang.org/)
 * **Estilização**: [Tailwind CSS](https://tailwindcss.com/)
 * **Banco de Dados**: [Supabase](https://supabase.com/) (PostgreSQL)
-* **UI/UX**: Headless UI & Heroicons
+* **Pagamentos**: [Mercado Pago SDK](https://www.mercadopago.com.br/developers/)
+* **Infraestrutura**: [Vercel](https://vercel.com/)
 
 ---
 
 ## 🛠️ Funcionalidades
 
 ### 🛒 Área do Cliente (Storefront)
-- **Vitrine Dinâmica**: Listagem de produtos em tempo real com integração direta ao banco de dados.
-- **Gestão de Carrinho**: Drawer interativo que permite adicionar, remover e gerenciar quantidades antes da compra.
-- **Notificação Visual**: Quando adicionado um produto ao carrinho é carregado uma notificação visual para confirmar.
-- **Checkout PIX**: Fluxo de pagamento focado em agilidade com geração de código "Copia e Cola".
-- **Histórico de Compras**: Página exclusiva para o usuário acompanhar o status (Pendente/Pago) e os detalhes de seus pedidos.
+- **Vitrine Dinâmica**: Listagem de produtos em tempo real sincronizada com o estoque do banco de dados.
+- **Gestão de Carrinho**: Drawer interativo para gerenciamento de itens com persistência local.
+- **Notificação Visual**: Feedback instantâneo (Toasts) ao adicionar ou remover itens.
+- **Checkout PIX Automatizado**: Geração de QR Code dinâmico e código "Copia e Cola" via API oficial.
+- **Histórico de Compras**: Área logada para acompanhar o status (Pendente/Pago) e detalhes dos itens adquiridos.
 
 ### 🛡️ Painel Administrativo (Dashboard)
-- **Gestão de Pedidos**: Visualização centralizada de todas as vendas realizadas.
-- **Controle de Status**: Alteração manual de status de pagamento (ex: validar o PIX e marcar como 'Pago').
-- **Gestão de Estoque**: Interface para controle de quantidades e preços dos produtos.
+- **Gestão de Pedidos**: Painel centralizado para visualização de faturamento e fluxo de vendas.
+- **Controle de Status**: Monitoramento em tempo real de pagamentos aprovados.
+- **Gestão de Estoque**: CRUD completo para produtos, preços e controle de inventário.
 
 ### ⚙️ Regras de Negócio & Segurança
-- **Validação de Estoque**: Sistema que impede o usuário de adicionar ao carrinho ou finalizar uma compra se a quantidade desejada for superior ao saldo em estoque.
-- **Integridade do Histórico**: O sistema salva um "snapshot" do nome e preço do produto no momento da compra, garantindo que o histórico do usuário não mude caso o produto seja alterado futuramente na vitrine.
-- **Atomicidade em Transações**: Processamento que garante a criação do pedido, registro dos itens e limpeza do carrinho em uma única operação lógica.
+- **Webhooks de Pagamento**: Integração com o Mercado Pago que valida o recebimento do dinheiro e atualiza o banco de dados automaticamente, garantindo a entrega mesmo se o cliente sair da página.
+- **Validação de Estoque**: Trava de segurança que impede vendas acima do saldo disponível.
+- **Integridade do Histórico (Snapshots)**: O sistema grava o preço e nome do produto no ato da compra, protegendo o histórico financeiro de alterações futuras no catálogo.
+- **Atomicidade**: Processamento backend que garante que o pedido só seja concluído se todas as etapas (registro, baixa no estoque e limpeza do carrinho) ocorrerem com sucesso.
+
+---
+
+## 🔌 Integração de Pagamento (Backend)
+
+O projeto utiliza uma arquitetura de **API Routes** do Next.js para manter a segurança das chaves privadas:
+
+* `/api/checkout/pix`: Valida o carrinho e solicita a geração do pagamento ao Mercado Pago.
+* `/api/webhooks/mercadopago`: Recebe notificações IPN/Webhook para confirmar o pagamento e liberar o pedido de forma automatizada.
+
+
 
 ---
 
 ## 🔧 Como Rodar o Projeto
 
-- **Acessar o site via link**:
+- **Acessar a versão de produção**:
    [Atletica Shop](https://atletica-shop.vercel.app/)
