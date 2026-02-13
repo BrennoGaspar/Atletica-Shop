@@ -13,9 +13,10 @@ export async function POST(request: Request) {
             transaction_amount: amount,
             description: 'Compra Loja Atlética',
             payment_method_id: 'pix',
-            payer: {
-                email: email,
-            },
+            payer: { email },
+            metadata: {
+                user_id: userId // Enviando o ID do usuário para o Webhook ler depois
+            }
         };
 
         const response = await payment.create({ body });
