@@ -75,51 +75,59 @@ export default function StorePage() {
     setCartCount(totalItems); 
   }
 
-  const confirmAddToCart = async (quantity: number) => {
+  const confirmAddToCart = async (quantityToAdd: number) => {
     const sessionData = localStorage.getItem('session:user');
     const userList = sessionData ? JSON.parse(sessionData) : null;
     const userId = Array.isArray(userList) ? userList[0]?.id : userList?.id;
 
     if (!userId || !selectedProduct) return;
 
-    const { data: existingItem, error: fetchError } = await supabase
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('user_id', userId)
-      .eq('product_id', selectedProduct.id)
-      .single();
+    try {
+      const [productRes, cartRes] = await Promise.all([
+        supabase.from('products').select('quantity').eq('id', selectedProduct.id).single(),
+        supabase.from('cart_items').select('quantity').eq('user_id', userId).eq('product_id', selectedProduct.id).single()
+      ]);
 
-    if (existingItem) {
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantity })
-        .eq('id', existingItem.id)
+      const stockAvailable = productRes.data?.quantity || 0;
+      const quantityInCart = cartRes.data?.quantity || 0;
+      const totalDesired = quantityInCart + quantityToAdd;
 
-      if (updateError) console.error("Erro ao atualizar:", updateError)
-      else {
-        setIsModalOpen(false)
-        setIsAlertOpen(true)
-        refreshCartCount()
+      // 2. Stock verify
+      if (totalDesired > stockAvailable) {
+        alert(`Erro! O máximo de unidades disponíveis desse produto é ${stockAvailable}.`);
+        return;
       }
 
-    } else {
+      // 3. Update / Insert
+      if (cartRes.data) {
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: totalDesired })
+          .eq('id', cartRes.data.quantity);
 
-      const { error } = await supabase
-        .from('cart_items')
-        .insert({
-          user_id: userId,
-          product_id: selectedProduct.id,
-          quantity: quantity
-        });
-
-      if (error) {
-        console.error("Erro ao inserir: ", error);
+        if (updateError) throw updateError;
       } else {
-        setIsModalOpen(false)
-        setIsAlertOpen(true)
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            user_id: userId,
+            product_id: selectedProduct.id,
+            quantity: quantityToAdd
+          });
+
+        if (insertError) throw insertError;
       }
+
+      // Sucess
+      setIsModalOpen(false);
+      setIsAlertOpen(true);
+      refreshCartCount();
+
+    } catch (error) {
+      console.error("Erro na operação de carrinho:", error);
+      alert("Erro ao adicionar produto. Tente novamente.");
     }
-  }
+  };
 
   return (
 

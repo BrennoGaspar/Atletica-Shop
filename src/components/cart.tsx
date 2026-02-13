@@ -6,6 +6,8 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
 import minhaImagem from '@/assets/aaaach.jpg'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface CartProps {
   open: boolean;
@@ -14,8 +16,11 @@ interface CartProps {
 
 export default function PersonalCart({ open, setOpen }: CartProps) {
 
+  const router = useRouter()
+
   const [cartItems, setCartItems] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
+  const isCartEmpty = cartItems.length === 0;
 
   // SESSION USER
   useEffect(() => {
@@ -158,12 +163,23 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
                       <p>R${subtotal.toFixed(2)}</p>
                     </div>
                     <div className="mt-6">
-                      <a
-                        href="#"
-                        className="flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-xs hover:bg-indigo-700"
-                      >
-                        Ir para pagamento
-                      </a>
+                        <button
+                          disabled={isCartEmpty}
+                          onClick={() => {
+                            if (!isCartEmpty) {
+                              // Se estiver usando o roteamento do Next.js:
+                              router.push('/checkout');
+                              setOpen(false);
+                            }
+                          }}
+                          className={`flex w-full items-center justify-center rounded-md border border-transparent px-6 py-3 text-base font-medium shadow-xs transition-all
+                            ${isCartEmpty 
+                              ? 'bg-gray-400 cursor-not-allowed opacity-50' 
+                              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}
+                        >
+                          {isCartEmpty ? 'Carrinho vazio' : 'Ir para pagamento'}
+                        </button>
                     </div>
                   </div>
                 </div>
