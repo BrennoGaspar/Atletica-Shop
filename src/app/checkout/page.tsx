@@ -3,160 +3,187 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { CheckCircleIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, ClipboardDocumentIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import Image from 'next/image'
 
 export default function PixCheckout() {
   const [cartItems, setCartItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [pixCopiaCola] = useState("00020126580014BR.GOV.BCB.PIX0136suachavepixaqui...") 
+  const [user, setUser] = useState<any>(null)
+  
+  // Estado para armazenar os dados reais do PIX vindos da API
+  const [pixData, setPixData] = useState<{ qr_code: string; copy_paste: string; payment_id: number } | null>(null)
+
   const router = useRouter()
 
   useEffect(() => {
-    async function loadOrder() {
+    async function initCheckout() {
       const savedUser = localStorage.getItem('session:user')
-      if (!savedUser) { router.push('/'); return }
+      if (!savedUser) {
+        router.push('/')
+        return
+      }
       
-      const user = JSON.parse(savedUser)
-      const userId = Array.isArray(user) ? user[0]?.id : user?.id
+      const parsedUser = JSON.parse(savedUser)
+      const userData = Array.isArray(parsedUser) ? parsedUser[0] : parsedUser
+      setUser(userData)
 
       const { data } = await supabase
         .from('cart_items')
         .select(`quantity, products (id, name, price)`)
-        .eq('user_id', userId)
+        .eq('user_id', userData.id)
 
-      if (data) setCartItems(data)
+      if (data && data.length > 0) {
+        setCartItems(data)
+      } else {
+        // Se o carrinho estiver vazio, volta para a loja
+        router.push('/store')
+      }
       setLoading(false)
     }
-    loadOrder()
-  }, [])
+    initCheckout()
+  }, [router])
 
   const subtotal = cartItems.reduce((acc, item) => acc + (item.products.price * item.quantity), 0)
 
   async function handleFinalizeOrder() {
-    if (cartItems.length === 0) return;
-    
-    setIsProcessing(true)
-    const savedUser = localStorage.getItem('session:user')
-    const user = JSON.parse(savedUser!)
-    const userId = Array.isArray(user) ? user[0]?.id : user?.id
+    if (isProcessing) return;
+    setIsProcessing(true);
 
     try {
-      // 1. CRIAR O PEDIDO (Tabela 'orders')
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: userId,
-          total_price: subtotal,
-          status: 'pendente' // Começa como pendente até alguém da atlética conferir
+      const res = await fetch('/api/checkout/pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: subtotal,
+          // Garanta que o user.email existe, ou o Mercado Pago rejeitará
+          email: user?.email || 'email_teste@gmail.com', 
+          userId: user?.id
         })
-        .select()
-        .single()
+      });
 
-      if (orderError) throw orderError
-
-      // 2. CRIAR OS ITENS DO PEDIDO (Tabela 'order_items')
-      const orderItemsToInsert = cartItems.map(item => ({
-        order_id: order.id,
-        product_name: item.products.name,
-        price_at_purchase: item.products.price,
-        quantity: item.quantity
-      }))
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsToInsert)
-
-      if (itemsError) throw itemsError
-
-      // 3. ATUALIZAR ESTOQUE (Tabela 'products')
-      for (const item of cartItems) {
-        const { data: product } = await supabase
-          .from('products')
-          .select('quantity')
-          .eq('id', item.products.id)
-          .single()
-
-        await supabase
-          .from('products')
-          .update({ quantity: (product?.quantity || 0) - item.quantity })
-          .eq('id', item.products.id)
+      // Se o servidor retornar erro (400, 500, etc), ele cai aqui
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Erro na comunicação com o servidor');
       }
 
-      // 4. LIMPAR CARRINHO
-      await supabase.from('cart_items').delete().eq('user_id', userId)
+      const data = await res.json();
 
-      alert("Pedido registrado com sucesso! Sua solicitação foi enviada para a Atlética.")
-      router.push('/store')
+      if (data.qr_code) {
+        setPixData({
+          qr_code: data.qr_code,
+          copy_paste: data.copy_paste,
+          payment_id: data.id
+        });
+      }
 
     } catch (error: any) {
-      console.error("Erro ao finalizar:", error.message)
-      alert("Erro ao processar pedido. Tente novamente.")
+      console.error("Erro completo no fetch:", error);
+      alert("Falha ao gerar PIX: " + error.message);
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
   }
 
-  if (loading) return <div className="text-white p-10 text-center">Carregando...</div>
+  if (loading) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+    </div>
+  )
 
   return (
-    <div className="bg-gray-800/50 min-h-screen p-6 flex flex-col items-center">
-      <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-2xl">
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">Pagamento via PIX</h2>
-        <p className="text-center text-gray-500 mb-6">Escaneie o QR Code ou cole o código abaixo</p>
-
-        <div className="bg-gray-100 aspect-square w-64 mx-auto mb-6 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300">
-           <p className="text-gray-400 text-sm p-4 text-center italic">QR Code será gerado após validação da chave</p>
-        </div>
-
-        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-6">
-          <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Código Pix Copia e Cola</p>
-          <div className="flex items-center gap-2">
-            <input 
-              readOnly 
-              value={pixCopiaCola}
-              className="bg-transparent text-xs text-gray-600 truncate flex-1 outline-none"
-            />
-            <button 
-              onClick={() => navigator.clipboard.writeText(pixCopiaCola)}
-              className="p-2 hover:bg-gray-200 rounded-full transition"
-            >
-              <ClipboardDocumentIcon className="size-5 text-indigo-600" />
-            </button>
-          </div>
-        </div>
-
-        <div className="border-t pt-4 mb-6">
-          <div className="flex justify-between font-bold text-lg text-gray-800">
-            <span>Total a pagar:</span>
-            <span className="text-green-600 font-mono">R$ {subtotal.toFixed(2)}</span>
-          </div>
-        </div>
-
-        <button 
-          onClick={handleFinalizeOrder}
-          disabled={isProcessing || cartItems.length === 0}
-          className={`w-full text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 ${
-            isProcessing ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
-          }`}
-        >
-          {isProcessing ? (
-            <span className="animate-pulse">Processando...</span>
-          ) : (
-            <>
-              <CheckCircleIcon className="size-6" />
-              Já realizei o pagamento
-            </>
-          )}
-        </button>
+    <div className="bg-gray-800/50 min-h-screen p-4 md:p-8 flex flex-col items-center">
+      <div className="max-w-md w-full bg-white rounded-3xl overflow-hidden shadow-2xl">
         
-        <button 
-          onClick={() => router.back()}
-          className="w-full text-gray-400 mt-4 text-sm hover:underline"
-        >
-          Voltar para o carrinho
-        </button>
+        {/* Header da Página */}
+        <div className="bg-indigo-600 p-6 text-white text-center">
+          <h2 className="text-2xl font-extrabold uppercase tracking-tight">Finalizar Compra</h2>
+          <p className="text-indigo-100 text-sm opacity-90">Pagamento via PIX</p>
+        </div>
+
+        <div className="p-8">
+          {/* Mostra o QR Code se já foi gerado, senão mostra o resumo */}
+          {!pixData ? (
+            <div className="space-y-6">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h3 className="text-slate-500 text-xs font-bold uppercase mb-3">Resumo do Pedido</h3>
+                {cartItems.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm mb-1 text-slate-700">
+                    <span>{item.quantity}x {item.products.name}</span>
+                    <span className="font-medium">R$ {(item.products.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="border-t mt-3 pt-3 flex justify-between items-center text-lg font-bold text-slate-900">
+                  <span>Total</span>
+                  <span className="text-green-600 font-mono">R$ {subtotal.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleFinalizeOrder}
+                disabled={isProcessing}
+                className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:bg-slate-300 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Gerando PIX...' : 'Gerar QR Code PIX'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+              {/* QR CODE REAL */}
+              <div className="bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-inner mb-6">
+                <img 
+                  src={`data:image/jpeg;base64,${pixData.qr_code}`} 
+                  alt="QR Code PIX" 
+                  className="w-64 h-64"
+                />
+              </div>
+
+              {/* COPIA E COLA */}
+              <div className="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                <p className="text-[10px] uppercase font-black text-slate-400 mb-2 tracking-widest text-center">Código Copia e Cola</p>
+                <div className="flex items-center gap-3">
+                  <input 
+                    readOnly 
+                    value={pixData.copy_paste}
+                    className="bg-transparent text-[11px] text-slate-600 truncate flex-1 outline-none font-mono"
+                  />
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(pixData.copy_paste)
+                      alert("Copiado!")
+                    }}
+                    className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition"
+                  >
+                    <ClipboardDocumentIcon className="size-5" />
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => router.push('/store/purchased')} // Altere para sua rota de histórico
+                className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl hover:bg-green-600 transition shadow-lg shadow-green-100 flex items-center justify-center gap-2"
+              >
+                <CheckCircleIcon className="size-6" />
+                Já realizei o pagamento
+              </button>
+            </div>
+          )}
+
+          <button 
+            onClick={() => router.back()}
+            className="w-full flex items-center justify-center gap-2 text-slate-400 mt-6 text-sm font-medium hover:text-slate-600 transition"
+          >
+            <ArrowLeftIcon className="size-4" />
+            Voltar
+          </button>
+        </div>
       </div>
+      
+      <p className="mt-8 text-slate-500 text-xs text-center max-w-[250px]">
+        O pagamento é processado com segurança via Mercado Pago. O estoque será reservado por 30 minutos.
+      </p>
     </div>
   )
 }
