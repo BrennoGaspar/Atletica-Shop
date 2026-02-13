@@ -55,7 +55,7 @@ export default function StorePage() {
   return (
     <>
       <header>
-        <NavBar onOpenCart={() => {}} isAdmin={true} />
+        <NavBar onOpenCart={() => {}} isAdmin={false} />
       </header>
       
       <main className="container mx-auto p-6 space-y-8">

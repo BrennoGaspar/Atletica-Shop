@@ -57,7 +57,7 @@ export default function PixCheckout() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: subtotal,
-          email: user?.email, // Certifique-se de que não está fixo como 'comprador@atletica.com'
+          email: user?.email,
           userId: user?.id
         })
       });
@@ -160,7 +160,7 @@ export default function PixCheckout() {
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => router.push('/store/purchased')} // Altere para sua rota de histórico
                 className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl hover:bg-green-600 transition shadow-lg shadow-green-100 flex items-center justify-center gap-2"
               >
