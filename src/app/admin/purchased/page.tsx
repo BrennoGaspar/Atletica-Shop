@@ -21,7 +21,8 @@ interface OrderData {
   status: string
   users: {
     name: string
-    age: number
+    email: string
+    phone: string
   }
 }
 
@@ -48,7 +49,7 @@ export default function StorePage() {
           created_at,
           total_price,
           status,
-          users ( name, age )
+          users ( name, email, phone )
         `)
         .order('created_at', { ascending: false })
 
@@ -148,7 +149,8 @@ export default function StorePage() {
               <tr>
                 <th className="px-6 py-3">ID</th>
                 <th className="px-6 py-3">Cliente</th>
-                <th className="px-6 py-3">Idade</th>
+                <th className="px-6 py-3">Email</th>
+                <th className="px-6 py-3">Telefone</th>
                 <th className="px-6 py-3">Data</th>
                 <th className="px-6 py-3">Valor Total</th>
                 <th className="px-6 py-3 text-center">Status</th>
@@ -159,7 +161,8 @@ export default function StorePage() {
                 <tr key={order.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4 font-mono text-xs text-indigo-400">#{order.id}</td>
                   <td className="px-6 py-4 text-white font-medium">{order.users?.name}</td>
-                  <td className="px-6 py-4">{order.users?.age} anos</td>
+                  <td className="px-6 py-4">{order.users?.email}</td>
+                  <td className="px-6 py-4">{order.users?.phone}</td>
                   <td className="px-6 py-4">{new Date(order.created_at).toLocaleDateString('pt-BR')}</td>
                   <td className="px-6 py-4 font-bold text-white">R$ {order.total_price?.toFixed(2)}</td>
                   <td className="px-6 py-4 text-center">

@@ -26,6 +26,7 @@ export default function NavBar({ onOpenCart, isAdmin }: NavBarProps) {
         ] : 
         navigation = [
             { name: 'Loja', href: '#' },
+            { name: 'Compras', href: ('/store/purchased') },
         ]
     
 
