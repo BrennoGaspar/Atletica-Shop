@@ -57,8 +57,7 @@ export default function PixCheckout() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: subtotal,
-          // Garanta que o user.email existe, ou o Mercado Pago rejeitará
-          email: user?.email || 'email_teste@gmail.com', 
+          email: user?.email, // Certifique-se de que não está fixo como 'comprador@atletica.com'
           userId: user?.id
         })
       });
