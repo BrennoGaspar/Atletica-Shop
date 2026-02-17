@@ -23,42 +23,39 @@ export async function POST(request: Request) {
     const paymentData = await payment.get({ id: paymentId });
 
     if (paymentData.status === 'approved') {
-      // SEARCH THE ORDER THAT FRONTEND CREATED
+      const userId = paymentData.metadata.user_id;
+
+      // 1. ATTEMPT TO FIND THE ORDER CREATED BY FRONTEND
       const { data: existingOrder } = await supabase
         .from('orders')
         .select('id, status')
         .eq('payment_id', String(paymentId))
         .single();
 
-      // IF ORDER EXISTS AND IS PAYED
+      // 2. IF ORDER IS ALREADY MARKED AS 'pago', STOP HERE TO AVOID DUPLICATE STOCK DEDUCTION
       if (existingOrder && existingOrder.status === 'pago') {
-        return NextResponse.json({ message: 'Pagamento já processado anteriormente' }, { status: 200 });
+        return NextResponse.json({ message: 'O pagamento já foi processado' }, { status: 200 });
       }
 
-      // IF ORDER IS 'pendente' - UPDATE 'status'
+      // 3. UPDATE STATUS OR CREATE THE ORDER IF IT DOESN'T EXIST
       if (existingOrder) {
+        // Just update existing pending order
         const { error: updateError } = await supabase
           .from('orders')
           .update({ status: 'pago' })
           .eq('id', existingOrder.id);
 
         if (updateError) throw updateError;
-        
-        console.log(`Pedido #${existingOrder.id} atualizado para PAGO via Webhook.`);
-      } 
-      
-      // IF ORDER NOT EXISTS
-      else {
-        const userId = paymentData.metadata.user_id;
-
-        const { data: cartItems } = await supabase
+      } else {
+        // Fallback: Create order from scratch if frontend button wasn't clicked
+        const { data: cartItemsFallback } = await supabase
           .from('cart_items')
           .select(`quantity, products (id, name, price, quantity)`)
           .eq('user_id', userId);
 
-        if (cartItems && cartItems.length > 0) {
-          const totalAmount = cartItems.reduce((acc, item: any) => acc + (item.products.price * item.quantity), 0);
-
+        if (cartItemsFallback && cartItemsFallback.length > 0) {
+          const totalAmount = cartItemsFallback.reduce((acc, item: any) => acc + (item.products.price * item.quantity), 0);
+          
           const { data: newOrder, error: orderError } = await supabase
             .from('orders')
             .insert({
@@ -71,30 +68,42 @@ export async function POST(request: Request) {
 
           if (orderError) throw orderError;
 
-          // REGISTER ITEMS AND STOCK
-          for (const item of cartItems as any) {
+          // Register items snapshot for the new order
+          for (const item of cartItemsFallback as any) {
             await supabase.from('order_items').insert({
               order_id: newOrder.id,
               product_name: item.products.name,
               price_at_purchase: item.products.price,
               quantity: item.quantity
             });
-
-            await supabase.from('products')
-              .update({ quantity: item.products.quantity - item.quantity })
-              .eq('id', item.products.id);
           }
-
-          // CLEAR THE CART
-          await supabase.from('cart_items').delete().eq('user_id', userId);
-          console.log(`Pedido criado do zero via Webhook (Frontend falhou ou foi fechado).`);
         }
+      }
+
+      // 4. COMMON ACTIONS: UPDATE STOCK AND CLEAR CART
+      // This runs regardless of how the order was created/updated above
+      const { data: finalCartItems } = await supabase
+        .from('cart_items')
+        .select(`quantity, products (id, quantity)`)
+        .eq('user_id', userId);
+
+      if (finalCartItems && finalCartItems.length > 0) {
+        for (const item of finalCartItems as any) {
+          // Decrease stock
+          await supabase.from('products')
+            .update({ quantity: item.products.quantity - item.quantity })
+            .eq('id', item.products.id);
+        }
+
+        // Clear the user's cart
+        await supabase.from('cart_items').delete().eq('user_id', userId);
+        console.log(`O estoque foi atualizado e o carrinho do usuário: ${userId} foi limpo!`);
       }
     }
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error: any) {
-    console.error('Erro crítico no Webhook:', error.message);
-    return NextResponse.json({ error: 'Erro interno processado' }, { status: 200 });
+    console.error('Erro crítico de webhook:', error.message);
+    return NextResponse.json({ error: 'Erro interno de processamento' }, { status: 200 });
   }
 }
