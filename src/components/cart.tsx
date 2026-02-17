@@ -6,7 +6,6 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
 import minhaImagem from '@/assets/aaaach.jpg'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 interface CartProps {
@@ -15,56 +14,76 @@ interface CartProps {
 }
 
 export default function PersonalCart({ open, setOpen }: CartProps) {
-
   const router = useRouter()
-
   const [cartItems, setCartItems] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
   const isCartEmpty = cartItems.length === 0;
 
-  // SESSION USER
+  // SESSION USER - Recupera o usuário logado
   useEffect(() => {
     const savedUser = localStorage.getItem('session:user');
     if (savedUser) {
       const parsed = JSON.parse(savedUser);
-      
-      // parsed returns an Array
-      if (Array.isArray(parsed)) {
-        setUser(parsed[0]); 
-      } else {
-        setUser(parsed);
-      }
+      setUser(Array.isArray(parsed) ? parsed[0] : parsed);
     }
   }, []);
 
   // SHOPPING CART
   async function FetchData() {
+    const actualId = user?.id;
+    if (!actualId) return;
 
-  const actualId = Array.isArray(user) ? user[0]?.id : user?.id;
-  if (!actualId) return;
-
-  const { data, error } = await supabase
-    .from('cart_items')
-    .select(`
-      id,
-      quantity,
-      products (
+    const { data, error } = await supabase
+      .from('cart_items')
+      .select(`
         id,
-        name,
-        price
-      )
-    `)
-    .eq('user_id', actualId)
+        quantity,
+        product_id,
+        products (
+          id,
+          name,
+          price,
+          quantity
+        )
+      `)
+      .eq('user_id', actualId);
 
-  if (error) {
-    console.log('Erro ao carregar carrinho: ', error)
-    return
+    if (error) {
+      console.error('Erro ao carregar carrinho:', error);
+      return;
+    }
+
+    const validItems = (data || []).filter(item => item.products !== null);
+    setCartItems(validItems);
   }
 
-  setCartItems(data || []);
-}
+  // VALIDATION 
+  async function handleGoToCheckout() {
+    if (isCartEmpty) return;
 
-  // REMOVE ITEM SHOPPING CART
+    const actualId = user?.id;
+    const { data } = await supabase
+      .from('cart_items')
+      .select(`quantity, products (name, quantity)`)
+      .eq('user_id', actualId);
+
+    const items = data || [];
+    const outOfStockItems = items.filter(
+      (item: any) => item.quantity > (item.products?.quantity || 0)
+    );
+
+    if (outOfStockItems.length > 0) {
+      const itemNames = outOfStockItems.map((i: any) => i.products.name).join(', ');
+      alert(`Quantidade indisponível para: ${itemNames}. Por favor, remova o item do seu carrinho.`);
+      FetchData();
+      return;
+    }
+
+    router.push('/checkout');
+    setOpen(false);
+  }
+
+  // REMOVE ITEM
   async function handleRemove(id: number) {
     const { error } = await supabase
       .from('cart_items')
@@ -76,118 +95,125 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
       return;
     }
 
-    // REMOVE WITHOUT REFRESH
     setCartItems((current) => current.filter((item) => item.id !== id));
   }
 
-  // USE EFFECT
+  // UPDATE DATA
   useEffect(() => {
     if (open && user?.id) {
       FetchData();
     }
   }, [open, user]);
 
-  // CALC OF SUBTOTAL
+  // SUBTOTAL
   const subtotal = cartItems.reduce((acc, item) => {
-    return acc + (item.products?.price * item.quantity)
-  }, 0)
+    const price = item.products?.price || 0;
+    return acc + (price * item.quantity);
+  }, 0);
 
   return (
-    <div>
-      <Dialog open={open} onClose={setOpen} className="relative z-10">
-        <DialogBackdrop
-          transition
-          className="fixed inset-0 bg-gray-500/75 transition-opacity duration-500 ease-in-out data-closed:opacity-0"
-        />
+    <Dialog open={open} onClose={setOpen} className="relative z-10">
+      <DialogBackdrop
+        transition
+        className="fixed inset-0 bg-gray-500/75 transition-opacity duration-500 ease-in-out data-closed:opacity-0"
+      />
 
-        <div className="fixed inset-0 overflow-hidden">
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
-              <DialogPanel
-                transition
-                className="pointer-events-auto w-screen max-w-md transform transition duration-500 ease-in-out data-closed:translate-x-full sm:duration-700"
-              >
-                <div className="flex h-full flex-col overflow-y-auto bg-white shadow-xl">
-                  <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-                    <div className="flex items-start justify-between">
-                      <DialogTitle className="text-lg font-medium text-gray-900">Carrinho</DialogTitle>
-                      <div className="ml-3 flex h-7 items-center">
-                        <button
-                          type="button"
-                          onClick={() => setOpen(false)}
-                          className="relative -m-2 p-2 text-gray-400 hover:text-gray-500"
-                        >
-                          <span className="absolute -inset-0.5" />
-                          <span className="sr-only">Fechar</span>
-                          <XMarkIcon aria-hidden="true" className="size-6" />
-                        </button>
-                      </div>
+      <div className="fixed inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
+            <DialogPanel
+              transition
+              className="pointer-events-auto w-screen max-w-md transform transition duration-500 ease-in-out data-closed:translate-x-full sm:duration-700"
+            >
+              <div className="flex h-full flex-col overflow-y-auto bg-white shadow-xl">
+                <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+                  <div className="flex items-start justify-between">
+                    <DialogTitle className="text-lg font-medium text-gray-900">Carrinho</DialogTitle>
+                    <div className="ml-3 flex h-7 items-center">
+                      <button
+                        type="button"
+                        onClick={() => setOpen(false)}
+                        className="relative -m-2 p-2 text-gray-400 hover:text-gray-500"
+                      >
+                        <span className="sr-only">Fechar</span>
+                        <XMarkIcon aria-hidden="true" className="size-6" />
+                      </button>
                     </div>
+                  </div>
 
-                    <div className="mt-8">
-                      <div className="flow-root">
-                        <ul role="list" className="-my-6 divide-y divide-gray-200">
-                          {cartItems.map((item) => (
-                            <li key={item.id} className="flex py-6">
+                  <div className="mt-8">
+                    <div className="flow-root">
+                      <ul role="list" className="-my-6 divide-y divide-gray-200">
+                        {cartItems.map((item) => {
+                          const isOutOfStock = item.quantity > (item.products?.quantity || 0);
+                          
+                          return (
+                            <li key={item.id} className={`flex py-6 ${isOutOfStock ? 'opacity-60' : ''}`}>
                               <div className="size-24 shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                <Image alt='Imagem' src={minhaImagem || 'https://placehold.co/150'} className="size-full object-cover" />
+                                <Image 
+                                  alt='Imagem do produto' 
+                                  src={minhaImagem} 
+                                  className="size-full object-cover" 
+                                />
                               </div>
 
                               <div className="ml-4 flex flex-1 flex-col">
-                                <div className="flex justify-between text-base font-medium text-gray-900">
-                                  <h3>
-                                    <a>{item.products.name}</a>
-                                  </h3>
-                                  <p className="ml-4">R$ {(item.products.price * item.quantity).toFixed(2)}</p>
+                                <div>
+                                  <div className="flex justify-between text-base font-medium text-gray-900">
+                                    <h3>{item.products?.name}</h3>
+                                    <p className="ml-4">R$ {(item.products?.price * item.quantity).toFixed(2)}</p>
+                                  </div>
+                                  {isOutOfStock && (
+                                    <p className="mt-1 text-xs font-bold text-red-600 uppercase">
+                                      Estoque insuficiente ({item.products?.quantity} restantes)
+                                    </p>
+                                  )}
                                 </div>
                                 <div className="flex flex-1 items-end justify-between text-sm">
                                   <p className="text-gray-500">Quantidade: {item.quantity}</p>
-
                                   <div className="flex">
-                                    <button type="button" onClick={() => handleRemove(item.id)} className="font-medium text-indigo-600 hover:text-indigo-500">
+                                    <button 
+                                      type="button" 
+                                      onClick={() => handleRemove(item.id)} 
+                                      className="font-medium text-indigo-600 hover:text-indigo-500"
+                                    >
                                       Remover
                                     </button>
                                   </div>
                                 </div>
                               </div>
                             </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 px-4 py-6 sm:px-6">
-                    <div className="flex justify-between text-base font-medium text-gray-900">
-                      <p>Total</p>
-                      <p>R${subtotal.toFixed(2)}</p>
-                    </div>
-                    <div className="mt-6">
-                        <button
-                          disabled={isCartEmpty}
-                          onClick={() => {
-                            if (!isCartEmpty) {
-                              // Se estiver usando o roteamento do Next.js:
-                              router.push('/checkout');
-                              setOpen(false);
-                            }
-                          }}
-                          className={`flex w-full items-center justify-center rounded-md border border-transparent px-6 py-3 text-base font-medium shadow-xs transition-all
-                            ${isCartEmpty 
-                              ? 'bg-gray-400 cursor-not-allowed opacity-50' 
-                              : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                            }`}
-                        >
-                          {isCartEmpty ? 'Carrinho vazio' : 'Ir para pagamento'}
-                        </button>
+                          );
+                        })}
+                      </ul>
                     </div>
                   </div>
                 </div>
-              </DialogPanel>
-            </div>
+
+                <div className="border-t border-gray-200 px-4 py-6 sm:px-6">
+                  <div className="flex justify-between text-base font-medium text-gray-900">
+                    <p>Total</p>
+                    <p>R$ {subtotal.toFixed(2)}</p>
+                  </div>
+                  <div className="mt-6">
+                    <button
+                      disabled={isCartEmpty}
+                      onClick={handleGoToCheckout}
+                      className={`flex w-full items-center justify-center rounded-md border border-transparent px-6 py-3 text-base font-medium shadow-sm transition-all
+                        ${isCartEmpty 
+                          ? 'bg-gray-400 cursor-not-allowed opacity-50' 
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        }`}
+                    >
+                      {isCartEmpty ? 'Carrinho vazio' : 'Ir para pagamento'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </DialogPanel>
           </div>
         </div>
-      </Dialog>
-    </div>
+      </div>
+    </Dialog>
   )
 }

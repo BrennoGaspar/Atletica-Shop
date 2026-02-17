@@ -86,6 +86,46 @@ export default function PixCheckout() {
     }
   }
 
+  async function handleConfirmPayment() {
+    if (!user || !pixData) return;
+
+    try {
+      // SET ORDER STATUS 'pendente'
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          total_price: subtotal,
+          status: 'pendente',
+          payment_id: String(pixData.payment_id)
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // REGISTER ORDER'S ITEMS (Snapshot)
+      const orderItems = cartItems.map(item => ({
+        order_id: order.id,
+        product_name: item.products.name,
+        price_at_purchase: item.products.price,
+        quantity: item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      router.push('/store/purchased');
+
+    } catch (error: any) {
+      console.error("Erro ao registrar pedido pendente:", error);
+      alert("Erro ao salvar pedido: " + error.message);
+    }
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -161,7 +201,7 @@ export default function PixCheckout() {
               </div>
 
               <button
-                onClick={() => router.push('/store/purchased')} // Altere para sua rota de histórico
+                onClick={handleConfirmPayment}
                 className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl hover:bg-green-600 transition shadow-lg shadow-green-100 flex items-center justify-center gap-2"
               >
                 <CheckCircleIcon className="size-6" />

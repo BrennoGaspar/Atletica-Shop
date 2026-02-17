@@ -28,7 +28,7 @@ export default function StorePage() {
 
     const { error } = await supabase
         .from('products')
-        .insert({ name: nameForm, price: priceForm, image_url: urlForm, quantity: quantityForm })
+        .insert({ name: nameForm, price: priceForm, imageUrl: urlForm, quantity: quantityForm })
 
     if( error ){
         console.log('Erro ao adicionar novo item: ', error)

@@ -29,6 +29,7 @@ interface OrderData {
 export default function StorePage() {
   const router = useRouter()
   const [orders, setOrders] = useState<OrderData[]>([])
+  const [ordersDashboard, setOrdersDashboard] = useState<OrderData[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function StorePage() {
     if (!session) {
       router.push('/');
     } else {
-      FetchData()
+      Promise.all([FetchData(), FetchDataDashboard()])
     }
   }, []);
 
@@ -62,9 +63,32 @@ export default function StorePage() {
     }
   }
 
+  async function FetchDataDashboard() {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          created_at,
+          total_price,
+          status,
+          users ( name, email, phone )
+        `)
+        .eq('status', 'pago')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setOrdersDashboard(data as any || [])
+    } catch (error) {
+      console.log('Erro ao buscar dados: ', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Transform the orders for the graphic
   const chartData = useMemo(() => {
-    const dailyData = orders.reduce((acc: any, order) => {
+    const dailyData = ordersDashboard.reduce((acc: any, order) => {
       const date = new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       if (!acc[date]) {
         acc[date] = 0;
@@ -78,7 +102,7 @@ export default function StorePage() {
       date,
       valor: dailyData[date]
     })).reverse();
-  }, [orders]);
+  }, [ordersDashboard]);
 
   return (
     <>
