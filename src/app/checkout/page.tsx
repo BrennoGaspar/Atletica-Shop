@@ -90,7 +90,7 @@ export default function PixCheckout() {
     if (!user || !pixData) return;
 
     try {
-      // SET ORDER STATUS 'pendente'
+      // 1. CREATE ORDER WITH 'pendente' STATUS
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -104,25 +104,32 @@ export default function PixCheckout() {
 
       if (orderError) throw orderError;
 
-      // REGISTER ORDER'S ITEMS (Snapshot)
-      const orderItems = cartItems.map(item => ({
-        order_id: order.id,
-        product_name: item.products.name,
-        price_at_purchase: item.products.price,
-        quantity: item.quantity
-      }));
+      // 2. REGISTER ITEMS, RESERVE STOCK AND CLEAR CART
+      for (const item of cartItems) {
+        // Register Item Snapshot (Add product_id here!)
+        await supabase.from('order_items').insert({
+          order_id: order.id,
+          product_id: item.products.id, // REQUIRED for the 30min return logic
+          product_name: item.products.name,
+          price_at_purchase: item.products.price,
+          quantity: item.quantity
+        });
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+        // Immediate Stock Reservation
+        const currentStock = item.products.quantity;
+        await supabase.from('products')
+          .update({ quantity: currentStock - item.quantity })
+          .eq('id', item.products.id);
+      }
 
-      if (itemsError) throw itemsError;
+      // 3. CLEAR CART IMMEDIATELY
+      await supabase.from('cart_items').delete().eq('user_id', user.id);
 
       router.push('/store/purchased');
 
     } catch (error: any) {
-      console.error("Erro ao registrar pedido pendente:", error);
-      alert("Erro ao salvar pedido: " + error.message);
+      console.error("Error during reservation:", error);
+      alert("Erro ao processar reserva: " + error.message);
     }
   }
 
