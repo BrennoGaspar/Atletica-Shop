@@ -87,14 +87,12 @@ export default function PixCheckout() {
   }
 
   async function handleConfirmPayment() {
-    // 1. Check if everything is ready
-    if (!user || !pixData || cartItems.length === 0) {
-      console.error("Missing data for checkout");
-      return;
-    }
+    if (!user || !pixData || cartItems.length === 0) return;
 
     try {
-      // 2. CREATE THE ORDER (Status: 'pendente')
+      console.log("Iniciando checkout. Itens no carrinho:", cartItems);
+
+      // 1. Criar o pedido
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -103,51 +101,63 @@ export default function PixCheckout() {
           status: 'pendente',
           payment_id: String(pixData.payment_id)
         })
-        .select()
-        .single();
+        .select().single();
 
       if (orderError) throw orderError;
 
-      // 3. PROCESS ITEMS AND DEDUCT STOCK
-      // Using for...of loop to ensure sequential and stable updates
+      // 2. Loop de reserva de estoque
       for (const item of cartItems) {
-        // Record the item in the order history
-        const { error: itemError } = await supabase.from('order_items').insert({
+        // DEBUG: Vamos ver se o ID existe
+        const productId = item.products?.id || item.product_id;
+        
+        if (!productId) {
+          alert("Erro: ID do produto não encontrado no item: " + item.products?.name);
+          continue; // Pula para o próximo para não travar tudo
+        }
+
+        console.log(`Tentando baixar estoque do produto ID: ${productId}, Quantidade: ${item.quantity}`);
+
+        // BUSCA O ESTOQUE REAL AGORA
+        const { data: currentProd } = await supabase
+          .from('products')
+          .select('quantity')
+          .eq('id', productId)
+          .single();
+
+        if (!currentProd) {
+          console.error(`Produto ${productId} não encontrado na tabela products`);
+          continue;
+        }
+
+        const novoEstoque = currentProd.quantity - item.quantity;
+
+        // ATUALIZAÇÃO NO BANCO
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ quantity: novoEstoque })
+          .eq('id', productId);
+
+        if (updateError) throw updateError;
+
+        // Registrar o item no pedido
+        await supabase.from('order_items').insert({
           order_id: order.id,
-          product_id: item.products.id,
-          product_name: item.products.name,
-          price_at_purchase: item.products.price,
+          product_id: productId,
+          product_name: item.products?.name || 'Produto',
+          price_at_purchase: item.products?.price || 0,
           quantity: item.quantity
         });
-
-        if (itemError) throw itemError;
-
-        // DEDUCT FROM STOCK: Current database quantity - item quantity
-        const newStockQuantity = item.products.quantity - item.quantity;
-
-        const { error: stockError } = await supabase
-          .from('products')
-          .update({ quantity: newStockQuantity })
-          .eq('id', item.products.id);
-
-        if (stockError) throw stockError;
       }
 
-      // 4. CLEAR THE USER'S CART
-      const { error: cartError } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', user.id);
+      // 3. Limpar carrinho
+      await supabase.from('cart_items').delete().eq('user_id', user.id);
 
-      if (cartError) throw cartError;
-
-      // 5. SUCCESS: Redirect to the success page
-      console.log("Inventory reserved successfully!");
+      console.log("Tudo pronto! Redirecionando...");
       router.push('/store/purchased');
 
     } catch (error: any) {
-      console.error("CRITICAL ERROR IN CHECKOUT:", error.message);
-      alert("Erro ao processar estoque: " + error.message);
+      console.error("ERRO NO PROCESSO:", error);
+      alert("Erro crítico: " + error.message);
     }
   }
 
