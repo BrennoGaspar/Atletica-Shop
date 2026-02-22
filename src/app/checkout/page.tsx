@@ -87,10 +87,10 @@ export default function PixCheckout() {
   }
 
   async function handleConfirmPayment() {
-    if (!user || !pixData) return;
+    if (!user || !pixData || cartItems.length === 0) return;
 
     try {
-      // 1. CREATE THE PENDING ORDER
+      // 1. Cria o pedido com status 'pendente'
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -104,38 +104,37 @@ export default function PixCheckout() {
 
       if (orderError) throw orderError;
 
-      // 2. PREPARE ITEMS AND UPDATE STOCK (The critical part)
-      // We use Promise.all to ensure all updates finish before moving on
+      // 2. Processa cada item: registra no pedido e BAIXA O ESTOQUE
       await Promise.all(cartItems.map(async (item) => {
-        // Register the item snapshot
+        // Registrar item no histórico do pedido
         await supabase.from('order_items').insert({
           order_id: order.id,
-          product_id: item.products.id, 
+          product_id: item.products.id,
           product_name: item.products.name,
           price_at_purchase: item.products.price,
           quantity: item.quantity
         });
 
-        // DECREASE STOCK: Current product quantity - item quantity in cart
-        const newQuantity = item.products.quantity - item.quantity;
-        
+        // BAIXA DE ESTOQUE: Quantidade atual - Quantidade comprada
+        const novoEstoque = item.products.quantity - item.quantity;
+
         const { error: stockError } = await supabase
           .from('products')
-          .update({ quantity: newQuantity }) // Verify if column name is 'quantity'
+          .update({ quantity: novoEstoque })
           .eq('id', item.products.id);
 
-        if (stockError) console.error("Error updating stock for:", item.products.name, stockError);
+        if (stockError) throw stockError;
       }));
 
-      // 3. CLEAR CART
+      // 3. Limpa o carrinho do usuário
       await supabase.from('cart_items').delete().eq('user_id', user.id);
 
-      // 4. REDIRECT
+      // 4. Sucesso! Redireciona
       router.push('/store/purchased');
 
     } catch (error: any) {
-      console.error("Critical error in reservation:", error);
-      alert("Erro ao processar: " + error.message);
+      console.error("Erro na reserva de estoque:", error.message);
+      alert("Houve um erro ao reservar seu estoque. Tente novamente.");
     }
   }
 
