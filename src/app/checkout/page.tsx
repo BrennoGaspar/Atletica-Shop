@@ -90,7 +90,7 @@ export default function PixCheckout() {
     if (!user || !pixData) return;
 
     try {
-      // 1. CREATE ORDER WITH 'pendente' STATUS
+      // 1. CREATE THE PENDING ORDER
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -104,32 +104,38 @@ export default function PixCheckout() {
 
       if (orderError) throw orderError;
 
-      // 2. REGISTER ITEMS, RESERVE STOCK AND CLEAR CART
-      for (const item of cartItems) {
-        // Register Item Snapshot (Add product_id here!)
+      // 2. PREPARE ITEMS AND UPDATE STOCK (The critical part)
+      // We use Promise.all to ensure all updates finish before moving on
+      await Promise.all(cartItems.map(async (item) => {
+        // Register the item snapshot
         await supabase.from('order_items').insert({
           order_id: order.id,
-          product_id: item.products.id, // REQUIRED for the 30min return logic
+          product_id: item.products.id, 
           product_name: item.products.name,
           price_at_purchase: item.products.price,
           quantity: item.quantity
         });
 
-        // Immediate Stock Reservation
-        const currentStock = item.products.quantity;
-        await supabase.from('products')
-          .update({ quantity: currentStock - item.quantity })
+        // DECREASE STOCK: Current product quantity - item quantity in cart
+        const newQuantity = item.products.quantity - item.quantity;
+        
+        const { error: stockError } = await supabase
+          .from('products')
+          .update({ quantity: newQuantity }) // Verify if column name is 'quantity'
           .eq('id', item.products.id);
-      }
 
-      // 3. CLEAR CART IMMEDIATELY
+        if (stockError) console.error("Error updating stock for:", item.products.name, stockError);
+      }));
+
+      // 3. CLEAR CART
       await supabase.from('cart_items').delete().eq('user_id', user.id);
 
+      // 4. REDIRECT
       router.push('/store/purchased');
 
     } catch (error: any) {
-      console.error("Error during reservation:", error);
-      alert("Erro ao processar reserva: " + error.message);
+      console.error("Critical error in reservation:", error);
+      alert("Erro ao processar: " + error.message);
     }
   }
 
