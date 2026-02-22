@@ -87,10 +87,14 @@ export default function PixCheckout() {
   }
 
   async function handleConfirmPayment() {
-    if (!user || !pixData || cartItems.length === 0) return;
+    // 1. Check if everything is ready
+    if (!user || !pixData || cartItems.length === 0) {
+      console.error("Missing data for checkout");
+      return;
+    }
 
     try {
-      // 1. Cria o pedido com status 'pendente'
+      // 2. CREATE THE ORDER (Status: 'pendente')
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -104,10 +108,11 @@ export default function PixCheckout() {
 
       if (orderError) throw orderError;
 
-      // 2. Processa cada item: registra no pedido e BAIXA O ESTOQUE
-      await Promise.all(cartItems.map(async (item) => {
-        // Registrar item no histórico do pedido
-        await supabase.from('order_items').insert({
+      // 3. PROCESS ITEMS AND DEDUCT STOCK
+      // Using for...of loop to ensure sequential and stable updates
+      for (const item of cartItems) {
+        // Record the item in the order history
+        const { error: itemError } = await supabase.from('order_items').insert({
           order_id: order.id,
           product_id: item.products.id,
           product_name: item.products.name,
@@ -115,26 +120,34 @@ export default function PixCheckout() {
           quantity: item.quantity
         });
 
-        // BAIXA DE ESTOQUE: Quantidade atual - Quantidade comprada
-        const novoEstoque = item.products.quantity - item.quantity;
+        if (itemError) throw itemError;
+
+        // DEDUCT FROM STOCK: Current database quantity - item quantity
+        const newStockQuantity = item.products.quantity - item.quantity;
 
         const { error: stockError } = await supabase
           .from('products')
-          .update({ quantity: novoEstoque })
+          .update({ quantity: newStockQuantity })
           .eq('id', item.products.id);
 
         if (stockError) throw stockError;
-      }));
+      }
 
-      // 3. Limpa o carrinho do usuário
-      await supabase.from('cart_items').delete().eq('user_id', user.id);
+      // 4. CLEAR THE USER'S CART
+      const { error: cartError } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('user_id', user.id);
 
-      // 4. Sucesso! Redireciona
+      if (cartError) throw cartError;
+
+      // 5. SUCCESS: Redirect to the success page
+      console.log("Inventory reserved successfully!");
       router.push('/store/purchased');
 
     } catch (error: any) {
-      console.error("Erro na reserva de estoque:", error.message);
-      alert("Houve um erro ao reservar seu estoque. Tente novamente.");
+      console.error("CRITICAL ERROR IN CHECKOUT:", error.message);
+      alert("Erro ao processar estoque: " + error.message);
     }
   }
 
