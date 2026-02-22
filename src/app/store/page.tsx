@@ -83,27 +83,29 @@ export default function StorePage() {
     if (!userId || !selectedProduct) return;
 
     try {
+      // 1. Fetch current stock and existing cart item in parallel
       const [productRes, cartRes] = await Promise.all([
         supabase.from('products').select('quantity').eq('id', selectedProduct.id).single(),
-        supabase.from('cart_items').select('quantity').eq('user_id', userId).eq('product_id', selectedProduct.id).single()
+        supabase.from('cart_items').select('id, quantity').eq('user_id', userId).eq('product_id', selectedProduct.id).single()
       ]);
 
       const stockAvailable = productRes.data?.quantity || 0;
       const quantityInCart = cartRes.data?.quantity || 0;
       const totalDesired = quantityInCart + quantityToAdd;
 
-      // 2. Stock verify
+      // 2. Stock validation
       if (totalDesired > stockAvailable) {
-        alert(`Erro! O máximo de unidades disponíveis desse produto é ${stockAvailable}.`);
+        alert(`Erro! O máximo de unidades disponíveis desse produto (estoque + seu carrinho) é ${stockAvailable}.`);
         return;
       }
 
-      // 3. Update / Insert
+      // 3. Update existing item OR Insert new one
       if (cartRes.data) {
+        // THE FIX: Use cartRes.data.id to identify the specific row to update
         const { error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: totalDesired })
-          .eq('id', cartRes.data.quantity);
+          .eq('id', cartRes.data.id); // Fixed: .id instead of .quantity
 
         if (updateError) throw updateError;
       } else {
@@ -118,16 +120,16 @@ export default function StorePage() {
         if (insertError) throw insertError;
       }
 
-      // Sucess
+      // 4. Success feedback
       setIsModalOpen(false);
       setIsAlertOpen(true);
       refreshCartCount();
 
-    } catch (error) {
-      console.error("Erro na operação de carrinho:", error);
+    } catch (error: any) {
+      console.error("Erro na operação de carrinho:", error.message);
       alert("Erro ao adicionar produto. Tente novamente.");
     }
-  };
+  }
 
   return (
 
