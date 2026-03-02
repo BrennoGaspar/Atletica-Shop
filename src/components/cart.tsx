@@ -43,7 +43,8 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
           id,
           name,
           price,
-          quantity
+          quantity,
+          imageUrl
         )
       `)
       .eq('user_id', actualId);
@@ -150,9 +151,11 @@ export default function PersonalCart({ open, setOpen }: CartProps) {
                           return (
                             <li key={item.id} className={`flex py-6 ${isOutOfStock ? 'opacity-60' : ''}`}>
                               <div className="size-24 shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                <Image 
-                                  alt='Imagem do produto' 
-                                  src={minhaImagem} 
+                                <img 
+                                  alt={item.products?.name || 'Imagem do produto'} 
+                                  src={item.products?.imageUrl || '/placeholder.png'} 
+                                  width={96}
+                                  height={96}
                                   className="size-full object-cover" 
                                 />
                               </div>
