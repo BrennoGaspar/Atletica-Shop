@@ -83,27 +83,33 @@ export default function StorePage() {
     if (!userId || !selectedProduct) return;
 
     try {
+      // 1. Busca estoque do produto E se ele já existe no carrinho do usuário
       const [productRes, cartRes] = await Promise.all([
         supabase.from('products').select('quantity').eq('id', selectedProduct.id).single(),
-        supabase.from('cart_items').select('quantity').eq('user_id', userId).eq('product_id', selectedProduct.id).single()
+        supabase.from('cart_items')
+          .select('id, quantity') // Pegamos o ID real da linha e a quantidade atual
+          .eq('user_id', userId)
+          .eq('product_id', selectedProduct.id)
+          .maybeSingle() // maybeSingle evita erro caso não encontre nada
       ]);
 
       const stockAvailable = productRes.data?.quantity || 0;
       const quantityInCart = cartRes.data?.quantity || 0;
       const totalDesired = quantityInCart + quantityToAdd;
 
-      // 2. Stock verify
+      // 2. Verificação de estoque
       if (totalDesired > stockAvailable) {
-        alert(`Erro! O máximo de unidades disponíveis desse produto é ${stockAvailable}.`);
+        alert(`Erro! O máximo de unidades disponíveis desse produto (estoque + seu carrinho) é ${stockAvailable}.`);
         return;
       }
 
-      // 3. Update / Insert
+      // 3. Update ou Insert
       if (cartRes.data) {
+        // CORREÇÃO AQUI: Filtramos pelo ID da linha (cartRes.data.id)
         const { error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: totalDesired })
-          .eq('id', cartRes.data.quantity);
+          .eq('id', cartRes.data.id); 
 
         if (updateError) throw updateError;
       } else {
@@ -118,7 +124,7 @@ export default function StorePage() {
         if (insertError) throw insertError;
       }
 
-      // Sucess
+      // Sucesso
       setIsModalOpen(false);
       setIsAlertOpen(true);
       refreshCartCount();
