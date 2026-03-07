@@ -17,9 +17,11 @@ export default function SignUp() {
         const nameForm = formData.get('name') as string;
         const ageForm = Number(formData.get('age'));
         const emailForm = formData.get('email') as string;
-        const rawPhone = formData.get('phone') as string;
-        const phoneNumber = rawPhone.replace(/\D/g, '')
+        const phoneFormRaw = formData.get('phone') as string;
         const passwordForm = formData.get('password') as string;
+
+        // Limpa qualquer caractere que não seja número antes de salvar
+        const phoneForm = phoneFormRaw.replace(/\D/g, '');
 
         /**
          * 1. Criar o usuário no Supabase Auth
@@ -32,7 +34,7 @@ export default function SignUp() {
                 data: {
                     full_name: nameForm,
                     age: ageForm,
-                    phone: phoneNumber
+                    phone: phoneForm
                 }
             }
         });
@@ -47,7 +49,7 @@ export default function SignUp() {
         }
 
         /**
-         * 2. (Opcional) Salvar na sua tabela 'users' pública.
+         * 2. Salvar na tabela pública 'users'.
          * Agora usamos o ID real (UUID) gerado pelo Auth.
          */
         if (data.user) {
@@ -57,7 +59,7 @@ export default function SignUp() {
                     id: data.user.id, // O ID agora é o UUID do Auth
                     name: nameForm, 
                     email: emailForm, 
-                    phone: phoneNumber, 
+                    phone: phoneForm, 
                     age: ageForm 
                 });
 
@@ -88,7 +90,7 @@ export default function SignUp() {
             )}
 
             <RegisterForm
-                title='Crie sua conta na A.A.A.A.C.H Shop'
+                title='Cadastre sua conta na Atlética'
                 buttonMessage='Finalizar Cadastro'
                 onSubmitAction={handleSignUp}
             />
