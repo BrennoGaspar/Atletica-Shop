@@ -10,19 +10,20 @@ interface Props {
 
 export default function RegisterForm({ title, buttonMessage, onSubmitAction }: Props) {
     const [isLoading, setIsLoading] = useState(false)
+    const [phoneValue, setPhoneValue] = useState('')
 
-    // Função para formatar o telefone automaticamente
+    // Função para formatar telefone automaticamente
     const formatPhone = (value: string) => {
-        // Remove tudo que não for número
-        let numbers = value.replace(/\D/g, '')
-        // Limita a 11 dígitos
-        numbers = numbers.substring(0, 11)
+        const digits = value.replace(/\D/g, '')
+        if (digits.length === 0) return ''
+        if (digits.length <= 2) return `(${digits}`
+        if (digits.length <= 7) return `(${digits.slice(0,2)}) ${digits.slice(2)}`
+        if (digits.length <= 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`
+        return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`
+    }
 
-        // Formata conforme o tamanho
-        if (numbers.length <= 2) return `(${numbers}`
-        if (numbers.length <= 6) return `(${numbers.substring(0, 2)}) ${numbers.substring(2)}`
-        if (numbers.length <= 10) return `(${numbers.substring(0, 2)}) ${numbers.substring(2, 6)}-${numbers.substring(6)}`
-        return `(${numbers.substring(0, 2)}) ${numbers.substring(2, 7)}-${numbers.substring(7)}`
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPhoneValue(formatPhone(e.target.value))
     }
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -44,14 +45,14 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                     {title}
                 </h2>
                 <p className="mt-2 text-sm text-slate-400 font-medium uppercase tracking-widest">
-                    Crie seu perfil em nossa loja
+                    Crie seu perfil de atleta
                 </p>
             </div>
 
             <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md bg-slate-900/40 p-8 rounded-3xl border border-white/5 backdrop-blur-sm shadow-2xl">
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
                     
-                    {/* Nome Completo - Ocupa 2 colunas */}
+                    {/* Nome Completo */}
                     <div className="sm:col-span-2">
                         <label htmlFor="name" className="block text-xs font-black uppercase tracking-widest text-slate-500 ml-1 mb-2">
                             Nome Completo
@@ -59,7 +60,7 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                         <input 
                             id="name" 
                             type="text" 
-                            placeholder="Ex: Paulo José da Silva" 
+                            placeholder="Ex: Brenno Gaspar" 
                             name="name" 
                             required 
                             className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all outline-none" 
@@ -83,7 +84,7 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                         />
                     </div>
 
-                    {/* Telefone */}
+                    {/* WhatsApp */}
                     <div>
                         <label htmlFor="phone" className="block text-xs font-black uppercase tracking-widest text-slate-500 ml-1 mb-2">
                             WhatsApp
@@ -94,15 +95,14 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                             name="phone"
                             placeholder="(12) 98765-4321"
                             maxLength={15}
-                            onChange={(e) => {
-                                e.target.value = formatPhone(e.target.value)
-                            }}
+                            value={phoneValue}
+                            onChange={handlePhoneChange}
                             required
                             className="w-full p-3 rounded-lg bg-gray-900 text-white"
                         />
                     </div>
 
-                    {/* Email - Ocupa 2 colunas */}
+                    {/* Email */}
                     <div className="sm:col-span-2">
                         <label htmlFor="email" className="block text-xs font-black uppercase tracking-widest text-slate-500 ml-1 mb-2">
                             E-mail
@@ -118,7 +118,7 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                         />
                     </div>
 
-                    {/* Senha - Ocupa 2 colunas */}
+                    {/* Senha */}
                     <div className="sm:col-span-2">
                         <label htmlFor="password" className="block text-xs font-black uppercase tracking-widest text-slate-500 ml-1 mb-2">
                             Senha de Acesso
@@ -134,7 +134,7 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                         />
                     </div>
 
-                    {/* Submit Button */}
+                    {/* Botão */}
                     <div className="sm:col-span-2 pt-4">
                         <button 
                             type="submit" 
