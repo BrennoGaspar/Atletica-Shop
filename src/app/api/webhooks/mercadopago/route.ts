@@ -2,88 +2,154 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 
-const client = new MercadoPagoConfig({ 
-  accessToken: process.env.MP_ACCESS_TOKEN! 
+const client = new MercadoPagoConfig({
+  accessToken: process.env.MP_ACCESS_TOKEN!,
 });
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    
-    // O Mercado Pago envia o ID de formas diferentes. Capturamos todas.
-    const paymentId = body.data?.id || body.id;
 
-    // Se não for um evento de pagamento, apenas ignoramos
-    if (!paymentId || (body.type && body.type !== 'payment')) {
+    const body = await request.json();
+
+    console.log("🔔 WEBHOOK RECEBIDO:", JSON.stringify(body, null, 2));
+
+    // Mercado Pago pode enviar o ID em formatos diferentes
+    const paymentId = body?.data?.id || body?.id;
+
+    if (!paymentId) {
+      console.log("⚠️ Evento ignorado - sem paymentId");
       return NextResponse.json({ received: true }, { status: 200 });
     }
 
+    // Buscar pagamento no Mercado Pago
     const payment = new Payment(client);
     const paymentData = await payment.get({ id: paymentId });
 
-    if (paymentData.status === 'approved') {
-      const userId = paymentData.metadata.user_id;
+    console.log("💳 STATUS PAGAMENTO:", paymentData.status);
 
-      // 1. Evitar duplicidade: Verifica se já existe um pedido 'pago' com esse ID
-      const { data: existingOrder } = await supabaseAdmin
-        .from('orders')
-        .select('id')
-        .eq('payment_id', String(paymentId))
-        .single();
+    // Só processa pagamentos aprovados
+    if (paymentData.status !== "approved") {
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
 
-      if (existingOrder) {
-        return NextResponse.json({ message: "Já processado" }, { status: 200 });
+    const userId = paymentData.metadata?.user_id;
+
+    if (!userId) {
+      console.log("⚠️ Pagamento sem metadata.user_id");
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
+    // Evitar duplicidade
+    const { data: existingOrder } = await supabaseAdmin
+      .from("orders")
+      .select("id")
+      .eq("payment_id", String(paymentId))
+      .maybeSingle();
+
+    if (existingOrder) {
+      console.log("⚠️ Pedido já processado:", existingOrder.id);
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
+    // Buscar itens do carrinho
+    const { data: cartItems, error: cartError } = await supabaseAdmin
+      .from("cart_items")
+      .select(`
+        quantity,
+        products (
+          id,
+          name,
+          price,
+          quantity
+        )
+      `)
+      .eq("user_id", userId);
+
+    if (cartError) {
+      console.error("❌ Erro ao buscar carrinho:", cartError);
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
+    if (!cartItems || cartItems.length === 0) {
+      console.log("⚠️ Carrinho vazio para user:", userId);
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
+    // Calcular total
+    let totalAmount = 0;
+
+    for (const item of cartItems as any) {
+      totalAmount += item.products.price * item.quantity;
+    }
+
+    // Criar pedido
+    const { data: newOrder, error: orderError } = await supabaseAdmin
+      .from("orders")
+      .insert({
+        user_id: userId,
+        total_price: totalAmount,
+        status: "pago",
+        payment_id: String(paymentId),
+      })
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error("❌ Erro ao criar pedido:", orderError);
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
+    console.log("📦 Pedido criado:", newOrder.id);
+
+    // Registrar itens e atualizar estoque
+    for (const item of cartItems as any) {
+
+      // Registrar snapshot do item
+      const { error: itemError } = await supabaseAdmin
+        .from("order_items")
+        .insert({
+          order_id: newOrder.id,
+          product_name: item.products.name,
+          price_at_purchase: item.products.price,
+          quantity: item.quantity,
+        });
+
+      if (itemError) {
+        console.error("❌ Erro ao salvar item:", itemError);
       }
 
-      // 2. Buscar itens do carrinho para o snapshot do pedido
-      const { data: cartItems } = await supabaseAdmin
-        .from('cart_items')
-        .select(`quantity, products (id, name, price, quantity)`)
-        .eq('user_id', userId);
+      // Atualizar estoque
+      const newStock = item.products.quantity - item.quantity;
 
-      if (cartItems && cartItems.length > 0) {
-        const totalAmount = cartItems.reduce((acc, item: any) => 
-          acc + (item.products.price * item.quantity), 0
-        );
+      const { error: stockError } = await supabaseAdmin
+        .from("products")
+        .update({ quantity: newStock })
+        .eq("id", item.products.id);
 
-        // 3. Criar o Pedido Oficial
-        const { data: newOrder, error: orderError } = await supabaseAdmin
-          .from('orders')
-          .insert({
-            user_id: userId,
-            total_price: totalAmount,
-            status: 'pago',
-            payment_id: String(paymentId)
-          })
-          .select().single();
-
-        if (orderError) throw orderError;
-
-        // 4. Registrar Itens do Pedido e Atualizar Estoque
-        for (const item of cartItems as any) {
-          // Registrar Snapshot do item
-          await supabaseAdmin.from('order_items').insert({
-            order_id: newOrder.id,
-            product_name: item.products.name,
-            price_at_purchase: item.products.price,
-            quantity: item.quantity
-          });
-
-          // Baixar o estoque real do produto
-          await supabaseAdmin.from('products')
-            .update({ quantity: item.products.quantity - item.quantity })
-            .eq('id', item.products.id);
-        }
-
-        // 5. Limpar o carrinho do usuário
-        await supabaseAdmin.from('cart_items').delete().eq('user_id', userId);
+      if (stockError) {
+        console.error("❌ Erro ao atualizar estoque:", stockError);
       }
     }
 
+    // Limpar carrinho
+    const { error: deleteError } = await supabaseAdmin
+      .from("cart_items")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteError) {
+      console.error("❌ Erro ao limpar carrinho:", deleteError);
+    }
+
+    console.log("🛒 Carrinho limpo");
+
     return NextResponse.json({ received: true }, { status: 200 });
+
   } catch (error: any) {
-    console.error('Erro crítico no Webhook:', error.message);
-    // Retornamos 200 para o Mercado Pago não ficar reenviando o erro infinitamente
-    return NextResponse.json({ error: 'Erro interno' }, { status: 200 });
+
+    console.error("🔥 ERRO CRÍTICO NO WEBHOOK:", error);
+
+    // Retorna 200 para evitar loop infinito do Mercado Pago
+    return NextResponse.json({ received: true }, { status: 200 });
   }
 }
