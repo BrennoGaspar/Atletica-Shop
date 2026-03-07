@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
       if (quantityRequested > stockAvailable) {
         return NextResponse.json({ 
-          error: `O produto ${item.products.name} acabou de esgotar ou possui estoque insuficiente.` 
+          error: `O produto ${item.products.name} acabou de esgotar!` 
         }, { status: 400 });
       }
 

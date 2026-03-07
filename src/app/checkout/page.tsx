@@ -17,6 +17,29 @@ export default function PixCheckout() {
 
   const router = useRouter()
 
+  // Verify if the order is ready
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    // Só começa a monitorar se o pixData (QR Code) existir
+    if (pixData?.payment_id) {
+      interval = setInterval(async () => {
+        const { data } = await supabase
+          .from('orders')
+          .select('status')
+          .eq('payment_id', String(pixData.payment_id))
+          .single();
+
+        if (data?.status === 'pago') {
+          clearInterval(interval);
+          router.push('/store/purchased');
+        }
+      }, 3000); // Verifica a cada 3 segundos
+    }
+
+    return () => clearInterval(interval);
+  }, [pixData, router]);
+
   useEffect(() => {
     async function initCheckout() {
       const savedUser = localStorage.getItem('session:user')
@@ -86,45 +109,45 @@ export default function PixCheckout() {
     }
   }
 
-  async function handleConfirmPayment() {
-    if (!user || !pixData) return;
+  // async function handleConfirmPayment() {
+  //   if (!user || !pixData) return;
 
-    try {
-      // SET ORDER STATUS 'pendente'
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          total_price: subtotal,
-          status: 'pendente',
-          payment_id: String(pixData.payment_id)
-        })
-        .select()
-        .single();
+  //   try {
+  //     // SET ORDER STATUS 'pendente'
+  //     const { data: order, error: orderError } = await supabase
+  //       .from('orders')
+  //       .insert({
+  //         user_id: user.id,
+  //         total_price: subtotal,
+  //         status: 'pendente',
+  //         payment_id: String(pixData.payment_id)
+  //       })
+  //       .select()
+  //       .single();
 
-      if (orderError) throw orderError;
+  //     if (orderError) throw orderError;
 
-      // REGISTER ORDER'S ITEMS (Snapshot)
-      const orderItems = cartItems.map(item => ({
-        order_id: order.id,
-        product_name: item.products.name,
-        price_at_purchase: item.products.price,
-        quantity: item.quantity
-      }));
+  //     // REGISTER ORDER'S ITEMS (Snapshot)
+  //     const orderItems = cartItems.map(item => ({
+  //       order_id: order.id,
+  //       product_name: item.products.name,
+  //       price_at_purchase: item.products.price,
+  //       quantity: item.quantity
+  //     }));
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+  //     const { error: itemsError } = await supabase
+  //       .from('order_items')
+  //       .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+  //     if (itemsError) throw itemsError;
 
-      router.push('/store/purchased');
+  //     router.push('/store/purchased');
 
-    } catch (error: any) {
-      console.error("Erro ao registrar pedido pendente:", error);
-      alert("Erro ao salvar pedido: " + error.message);
-    }
-  }
+  //   } catch (error: any) {
+  //     console.error("Erro ao registrar pedido pendente:", error);
+  //     alert("Erro ao salvar pedido: " + error.message);
+  //   }
+  // }
 
   if (loading) return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -200,13 +223,13 @@ export default function PixCheckout() {
                 </div>
               </div>
 
-              <button
+              {/* <button
                 onClick={handleConfirmPayment}
                 className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl hover:bg-green-600 transition shadow-lg shadow-green-100 flex items-center justify-center gap-2"
               >
                 <CheckCircleIcon className="size-6" />
                 Já realizei o pagamento
-              </button>
+              </button> */}
             </div>
           )}
 
@@ -221,7 +244,7 @@ export default function PixCheckout() {
       </div>
       
       <p className="mt-8 text-slate-500 text-xs text-center max-w-[250px]">
-        O pagamento é processado com segurança via Mercado Pago. O estoque será reservado por 30 minutos.
+        O pagamento é processado com segurança via Mercado Pago. Após efetuar o pagamento, seu produto já será reservado!
       </p>
     </div>
   )
