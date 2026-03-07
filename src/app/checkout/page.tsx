@@ -244,7 +244,7 @@ export default function PixCheckout() {
       </div>
       
       <p className="mt-8 text-slate-500 text-xs text-center max-w-[250px]">
-        O pagamento é processado com segurança via Mercado Pago. Após efetuar o pagamento, seu produto já será reservado!
+        O pagamento é processado com segurança via Mercado Pago. Após efetuar o pagamento, você será redirecionado automaticamente.
       </p>
     </div>
   )
