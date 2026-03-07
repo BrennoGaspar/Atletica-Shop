@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
 
@@ -10,6 +10,20 @@ interface Props {
 
 export default function RegisterForm({ title, buttonMessage, onSubmitAction }: Props) {
     const [isLoading, setIsLoading] = useState(false)
+
+    // Função para formatar o telefone automaticamente
+    const formatPhone = (value: string) => {
+        // Remove tudo que não for número
+        let numbers = value.replace(/\D/g, '')
+        // Limita a 11 dígitos
+        numbers = numbers.substring(0, 11)
+
+        // Formata conforme o tamanho
+        if (numbers.length <= 2) return `(${numbers}`
+        if (numbers.length <= 6) return `(${numbers.substring(0, 2)}) ${numbers.substring(2)}`
+        if (numbers.length <= 10) return `(${numbers.substring(0, 2)}) ${numbers.substring(2, 6)}-${numbers.substring(6)}`
+        return `(${numbers.substring(0, 2)}) ${numbers.substring(2, 7)}-${numbers.substring(7)}`
+    }
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         setIsLoading(true)
@@ -30,7 +44,7 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                     {title}
                 </h2>
                 <p className="mt-2 text-sm text-slate-400 font-medium uppercase tracking-widest">
-                    Crie seu perfil de atleta
+                    Crie seu perfil em nossa loja
                 </p>
             </div>
 
@@ -45,7 +59,7 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                         <input 
                             id="name" 
                             type="text" 
-                            placeholder="Ex: Brenno Gaspar" 
+                            placeholder="Ex: Paulo José da Silva" 
                             name="name" 
                             required 
                             className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all outline-none" 
@@ -74,13 +88,17 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                         <label htmlFor="phone" className="block text-xs font-black uppercase tracking-widest text-slate-500 ml-1 mb-2">
                             WhatsApp
                         </label>
-                        <input 
-                            id="phone" 
-                            type="tel" 
-                            name="phone" 
-                            placeholder="(11) 9..." 
-                            required 
-                            className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all outline-none" 
+                        <input
+                            id="phone"
+                            type="text"
+                            name="phone"
+                            placeholder="(12) 98765-4321"
+                            maxLength={15}
+                            onChange={(e) => {
+                                e.target.value = formatPhone(e.target.value)
+                            }}
+                            required
+                            className="w-full p-3 rounded-lg bg-gray-900 text-white"
                         />
                     </div>
 
