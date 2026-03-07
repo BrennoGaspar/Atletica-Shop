@@ -42,7 +42,7 @@ export default function LoginForm({ title, buttonMessage, button, onSubmitAction
                         <div className="mt-2">
                             <input 
                                 id="email" 
-                                placeholder="seuemail@ifsp.edu.br" 
+                                placeholder="seu@email.com" 
                                 type="email" 
                                 name="email" 
                                 required 

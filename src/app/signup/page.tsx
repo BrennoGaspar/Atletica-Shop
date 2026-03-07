@@ -87,7 +87,7 @@ export default function SignUp() {
             )}
 
             <RegisterForm
-                title='Cadastre sua conta na Atlética'
+                title='Crie sua conta na A.A.A.A.C.H Shop'
                 buttonMessage='Finalizar Cadastro'
                 onSubmitAction={handleSignUp}
             />
