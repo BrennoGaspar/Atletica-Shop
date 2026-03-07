@@ -5,35 +5,60 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-export default function StorePage() {
+export default function AddItemPage() {
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const router = useRouter()  
-
-  // SESSION
+  // 1. SESSION & AUTH CHECK
   useEffect(() => {
-    const session = localStorage.getItem('session:admin');
-    if (!session) {
-      router.push('/');
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession()
+      // O Middleware já faz o grosso, aqui apenas garantimos que a 
+      // sessão está carregada no cliente para o RLS funcionar.
+      if (!session) {
+        router.replace('/')
+      }
     }
-  }, []);
+    checkAuth()
+  }, [router])
 
   async function AddData(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); // don't reload the page
+    event.preventDefault()
+    if (isSubmitting) return
+    setIsSubmitting(true)
 
-    const formData = new FormData(event.currentTarget);
-    const nameForm = formData.get('name') as string;
-    const priceForm = Number(formData.get('price'));
-    const urlForm = formData.get('image_url') as string;
-    const quantityForm = formData.get('quantity') as string;
+    const formData = new FormData(event.currentTarget)
+    const nameForm = formData.get('name') as string
+    const priceForm = Number(formData.get('price'))
+    const urlForm = formData.get('image_url') as string
+    const quantityForm = Number(formData.get('quantity')) // Convertido para Number
 
-    const { error } = await supabase
+    try {
+      /**
+       * IMPORTANTE RLS:
+       * Para este .insert() funcionar, você deve ter uma política na tabela 'products'
+       * que permita INSERT para usuários autenticados (ou especificamente seu e-mail).
+       */
+      const { error } = await supabase
         .from('products')
-        .insert({ name: nameForm, price: priceForm, imageUrl: urlForm, quantity: quantityForm })
+        .insert({ 
+            name: nameForm, 
+            price: priceForm, 
+            imageUrl: urlForm, 
+            quantity: quantityForm 
+        })
 
-    if( error ){
-        console.log('Erro ao adicionar novo item: ', error)
-    } else {
+      if (error) {
+        console.error('Erro RLS/Insert:', error.message)
+        alert('Erro ao cadastrar: Verifique se você possui permissões de administrador.')
+      } else {
+        alert('Produto cadastrado com sucesso!')
         router.push('/admin')
+      }
+    } catch (err) {
+      console.error('Erro inesperado:', err)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -44,7 +69,6 @@ export default function StorePage() {
       </header>
       
       <main className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-black px-4">
-        {/* Form Card */}
         <div className="w-full max-w-md bg-gray-900/50 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-2xl">
           
           <div className="mb-8">
@@ -89,40 +113,37 @@ export default function StorePage() {
               <label htmlFor="image_url" className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
                 URL da Imagem
               </label>
-              <div className="relative">
-                <input 
-                  id="image_url" 
-                  type="text" 
-                  name="image_url" 
-                  placeholder="URL da imagem do produto"
-                  required 
-                  className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none" 
-                />
-              </div>
+              <input 
+                id="image_url" 
+                type="text" 
+                name="image_url" 
+                placeholder="URL da imagem do produto"
+                required 
+                className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none" 
+              />
             </div>
 
             <div className="space-y-2">
               <label htmlFor="quantity" className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
                 Quantidade
               </label>
-              <div className="relative">
-                <input 
-                  id="quantity" 
-                  type="number" 
-                  name="quantity" 
-                  placeholder="1"
-                  required 
-                  className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none" 
-                />
-              </div>
+              <input 
+                id="quantity" 
+                type="number" 
+                name="quantity" 
+                placeholder="1"
+                required 
+                className="block w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-gray-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none" 
+              />
             </div>
 
             <div className="pt-4">
               <button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-[0.98] disabled:opacity-50"
               >
-                Cadastrar Item
+                {isSubmitting ? 'Cadastrando...' : 'Cadastrar Item'}
               </button>
               
               <button

@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react'
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface Props {
     title: string;
@@ -10,54 +9,64 @@ interface Props {
     onClose: () => void;
 }
 
-export default function CustomAlert( {title, description, onClose} : Props ) {
-    const [open, setOpen] = useState(true)
+export default function CustomAlert({ title, description, onClose }: Props) {
+    // Nota: O estado 'open' é controlado pelo componente pai. 
+    // Se este componente for renderizado, assumimos que open={true}.
 
     return (
-        <div>
-            <Dialog open={open} onClose={onClose} className="relative z-10">
-                <DialogBackdrop
-                    transition
-                    className="fixed inset-0 bg-gray-900/50 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
-                />
+        <Dialog open={true} onClose={onClose} className="relative z-[120]">
+            {/* Backdrop com desfoque */}
+            <DialogBackdrop
+                transition
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity data-closed:opacity-0 duration-300"
+            />
 
-                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                        <DialogPanel
-                            transition
-                            className="relative transform overflow-hidden rounded-lg bg-gray-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg data-closed:sm:translate-y-0 data-closed:sm:scale-95"
-                        >
-                            <div className="bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-red-500/10 sm:mx-0 sm:size-10">
-                                        <ExclamationTriangleIcon aria-hidden="true" className="size-6 text-red-400" />
-                                    </div>
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                        <DialogTitle as="h3" className="text-base font-semibold text-white">
-                                            {title}
-                                        </DialogTitle>
-                                        <div className="mt-2">
-                                            <p className="text-sm text-gray-400">
-                                               {description}
-                                            </p>
-                                        </div>
+            <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                    <DialogPanel
+                        transition
+                        className="relative transform overflow-hidden rounded-2xl bg-slate-900 text-left shadow-2xl border border-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-closed:scale-95 duration-300 sm:my-8 sm:w-full sm:max-w-lg"
+                    >
+                        {/* Botão fechar no canto superior */}
+                        <div className="absolute right-4 top-4">
+                            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+                                <XMarkIcon className="size-5" />
+                            </button>
+                        </div>
+
+                        <div className="px-6 pt-6 pb-4">
+                            <div className="sm:flex sm:items-start">
+                                {/* Ícone de Alerta */}
+                                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-amber-500/10 sm:mx-0 sm:size-10">
+                                    <ExclamationTriangleIcon aria-hidden="true" className="size-6 text-amber-500" />
+                                </div>
+
+                                <div className="mt-4 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                    <DialogTitle as="h3" className="text-lg font-bold text-white tracking-tight">
+                                        {title}
+                                    </DialogTitle>
+                                    <div className="mt-2">
+                                        <p className="text-sm text-slate-400 leading-relaxed">
+                                            {description}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-gray-700/25 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                                <button
-                                    type="button"
-                                    data-autofocus
-                                    onClick={onClose}
-                                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white inset-ring inset-ring-white/5 hover:bg-white/20 sm:mt-0 sm:w-auto"
-                                >
-                                    Ok
-                                </button>
-                            </div>
-                        </DialogPanel>
-                    </div>
+                        </div>
+
+                        {/* Footer do Modal */}
+                        <div className="bg-white/[0.02] px-6 py-4 sm:flex sm:flex-row-reverse">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="inline-flex w-full justify-center rounded-xl bg-indigo-600 px-8 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-all active:scale-95 sm:w-auto"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </DialogPanel>
                 </div>
-            </Dialog>
-        </div>
+            </div>
+        </Dialog>
     )
 }

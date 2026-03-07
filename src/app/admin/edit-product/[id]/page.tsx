@@ -20,142 +20,169 @@ export default function EditProductPage() {
     imageUrl: ''
   })
 
-  // 1. Carregar os dados atuais do produto
+  // 1. Carregar dados do produto ao montar a página
   useEffect(() => {
     async function loadProduct() {
-      if (!productId) return
+      if (!productId) return;
 
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('id', productId)
-        .single()
+        .single();
 
       if (error) {
-        console.error('Erro ao carregar produto:', error)
-        router.push('/store') // Volta se der erro
-      } else {
+        console.error('Erro ao carregar produto:', error.message);
+        router.replace('/admin');
+      } else if (data) {
         setFormData({
           name: data.name,
           price: data.price,
           quantity: data.quantity,
           imageUrl: data.imageUrl || ''
-        })
+        });
       }
-      setLoading(false)
+      setLoading(false);
     }
 
-    loadProduct()
-  }, [productId, router])
+    loadProduct();
+  }, [productId, router]);
 
-  // 2. Função para salvar as alterações
+  // 2. Função de Salvamento Robusta
   const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setUpdating(true)
+    e.preventDefault();
+    if (updating) return; // Trava para evitar cliques duplos
+    
+    setUpdating(true);
 
-    const { error } = await supabase
-      .from('products')
-      .update({
-        name: formData.name,
-        price: formData.price,
-        quantity: formData.quantity,
-        imageUrl: formData.imageUrl
-      })
-      .eq('id', productId)
+    try {
+      // 1. Valida o usuário antes de enviar (Garante que o ID 97e39d1a... está ativo)
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        alert("Sessão não encontrada. Por favor, faça login novamente.");
+        router.push('/login');
+        return;
+      }
 
-    if (error) {
-      alert('Erro ao atualizar produto: ' + error.message)
-    } else {
-      alert('Produto atualizado com sucesso!')
-      router.push('/admin')
+      // 2. Executa a atualização no Supabase
+      const { data, error } = await supabase
+        .from('products')
+        .update({
+          name: formData.name.trim(),
+          price: Number(formData.price),
+          quantity: Math.floor(Number(formData.quantity)),
+          imageUrl: formData.imageUrl.trim()
+        })
+        .eq('id', Number(productId)) // Garante que o ID é tratado como int8 (numérico)
+        .select(); // Retorna o objeto alterado para confirmar o sucesso
+
+      if (error) throw error;
+
+      // 3. Verifica se a linha foi realmente afetada (Se data for [], o RLS barrou)
+      if (data && data.length > 0) {
+        alert('Produto atualizado com sucesso na Atlética Shop!');
+        router.push('/admin');
+      } else {
+        console.error("Erro de RLS: O ID do usuário não bate com a política do banco.");
+        alert('Erro de permissão: Sua conta não tem autorização para editar este produto.');
+      }
+
+    } catch (err: any) {
+      console.error('❌ Erro na operação:', err.message);
+      alert(`Falha ao salvar: ${err.message}`);
+    } finally {
+      setUpdating(false);
     }
-    setUpdating(false)
   }
 
-  if (loading) return <div className="p-10 text-white">Carregando dados...</div>
+  if (loading) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <NavBar onOpenCart={() => {}} isAdmin={true} />
       
       <main className="container mx-auto p-6 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8 text-white">Editar Produto</h1>
+        <div className="mb-8">
+            <p className="text-indigo-400 text-xs font-bold uppercase tracking-widest mb-2">Atlética Shop - Gestão</p>
+            <h1 className="text-3xl font-extrabold text-white">Editar Produto</h1>
+        </div>
 
-        <form onSubmit={handleUpdate} className="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl space-y-6">
+        <form onSubmit={handleUpdate} className="bg-slate-900/50 backdrop-blur-md p-8 rounded-3xl border border-white/5 shadow-2xl space-y-6">
           
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Nome do Produto</label>
-            <input 
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-tighter">Nome do Produto</label>
+                <input 
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-tighter">Preço (R$)</label>
+                <input 
+                  type="number"
+                  step="0.01"
+                  required
+                  value={formData.price}
+                  onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
+                  className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition-all font-mono"
+                />
+              </div>
           </div>
 
-          {/* Price */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Preço (R$)</label>
-            <input 
-              type="number"
-              step="0.01"
-              required
-              value={formData.price}
-              onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
-            />
-          </div>
-
-          {/* Quantity */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Quantidade</label>
+            <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-tighter">Quantidade em Estoque</label>
             <input 
               type="number"
               required
               value={formData.quantity}
               onChange={(e) => setFormData({...formData, quantity: Number(e.target.value)})}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition-all"
             />
           </div>
 
-          {/* Image */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">URL da Imagem</label>
+            <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-tighter">URL da Imagem</label>
             <input 
               type="text"
               value={formData.imageUrl}
               onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition-all"
               placeholder="https://exemplo.com/imagem.jpg"
             />
             {formData.imageUrl && (
-                <div className="mt-4">
-                    <p className="text-xs text-slate-500 mb-2">Preview:</p>
-                    <img src={formData.imageUrl} alt="Preview" className="w-32 h-32 object-cover rounded-lg border border-slate-700" />
+                <div className="mt-6 p-4 bg-slate-950/50 rounded-2xl border border-white/5 inline-block">
+                    <p className="text-[10px] text-slate-500 mb-3 uppercase font-bold">Pré-visualização:</p>
+                    <img src={formData.imageUrl} alt="Preview" className="w-40 h-40 object-cover rounded-xl shadow-lg" />
                 </div>
             )}
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-4 pt-6">
             <button 
               type="button"
               onClick={() => router.back()}
-              className="flex-1 px-6 py-3 rounded-xl border border-slate-700 font-bold hover:bg-slate-800 transition-all"
+              className="flex-1 px-6 py-4 rounded-2xl border border-white/5 font-bold hover:bg-white/5 transition-all text-slate-400"
             >
               Cancelar
             </button>
             <button 
               type="submit"
               disabled={updating}
-              className="flex-1 bg-indigo-600 px-6 py-3 rounded-xl font-bold hover:bg-indigo-500 transition-all disabled:opacity-50"
+              className="flex-1 bg-indigo-600 px-6 py-4 rounded-2xl font-bold hover:bg-indigo-500 transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/20"
             >
-              {updating ? 'Salvando...' : 'Salvar Alterações'}
+              {updating ? 'Salvando...' : 'Confirmar Edição'}
             </button>
           </div>
-
         </form>
       </main>
     </div>
