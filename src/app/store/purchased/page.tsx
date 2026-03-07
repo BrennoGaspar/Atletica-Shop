@@ -115,7 +115,7 @@ export default function MyPurchasesPage() {
                         </div>
                         <div className="space-y-1">
                           <p className="text-[10px] font-black uppercase tracking-tighter text-slate-600">Protocolo</p>
-                          <p className="font-mono text-sm text-indigo-400 uppercase">#{order.id.split('-')[0]}</p>
+                          <p className="font-mono text-sm text-indigo-400 uppercase">#{String(order.id).split('-')[0]}</p>
                         </div>
                       </div>
 
@@ -143,9 +143,6 @@ export default function MyPurchasesPage() {
                         <span className={`md:hidden px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(order.status)}`}>
                             {order.status}
                         </span>
-                        <button className="p-2 hover:bg-white/5 rounded-full transition-colors">
-                          <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-                        </button>
                       </div>
                     </div>
                   </div>
