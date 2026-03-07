@@ -1,5 +1,6 @@
 'use client'
 
+import PersonalCart from '@/components/cart'
 import NavBar from '@/components/navbar'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -20,6 +21,7 @@ export default function StorePage() {
   const router = useRouter()
   const [orders, setOrders] = useState<OrderData[]>([])
   const [loading, setLoading] = useState(true)
+  const [isCartOpen, setIsCartOpen] = useState(false)
 
   useEffect(() => {
     const session = localStorage.getItem('session:user');
@@ -55,7 +57,9 @@ export default function StorePage() {
   return (
     <>
       <header>
-        <NavBar onOpenCart={() => {}} isAdmin={false} />
+        <NavBar onOpenCart={() => setIsCartOpen(true)} isAdmin={false} />
+
+        <PersonalCart open={isCartOpen} setOpen={setIsCartOpen} />
       </header>
       
       <main className="container mx-auto p-6 space-y-8">
