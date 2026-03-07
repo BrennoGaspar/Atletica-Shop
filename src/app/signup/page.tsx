@@ -20,13 +20,10 @@ export default function SignUp() {
         const phoneFormRaw = formData.get('phone') as string;
         const passwordForm = formData.get('password') as string;
 
-        // Limpa qualquer caractere que não seja número antes de salvar
         const phoneForm = phoneFormRaw.replace(/\D/g, '');
 
-        /**
-         * 1. Criar o usuário no Supabase Auth
-         * Passamos os dados extras no 'options.data' para ficarem salvos no metadata do usuário.
-         */
+        // 1. Criar o usuário no Supabase Auth
+        // O Trigger no SQL vai pegar esses metadados e salvar na tabela 'users' automaticamente
         const { data, error: authError } = await supabase.auth.signUp({
             email: emailForm,
             password: passwordForm,
@@ -48,35 +45,17 @@ export default function SignUp() {
             return;
         }
 
-        /**
-         * 2. Salvar na tabela pública 'users'.
-         * Agora usamos o ID real (UUID) gerado pelo Auth.
-         */
-        if (data.user) {
-            const { error: dbError } = await supabase
-                .from('users')
-                .insert({ 
-                    id: data.user.id, // O ID agora é o UUID do Auth
-                    name: nameForm, 
-                    email: emailForm, 
-                    phone: phoneForm, 
-                    age: ageForm 
-                });
+        // 🚀 AQUI ESTÁ A MUDANÇA: 
+        // Não fazemos mais o supabase.from('users').insert()
+        // O Trigger no banco já fez isso!
 
-            if (dbError) {
-                console.error('Erro ao sincronizar tabela pública:', dbError.message);
-                // Note: O usuário já foi criado no Auth, o erro aqui é apenas na tabela extra.
-            }
-
-            setAlertConfig({ 
-                show: true, 
-                title: 'Sucesso!', 
-                desc: 'Verifique seu e-mail para confirmar o cadastro (se habilitado) ou faça login.' 
-            });
-            
-            // Redireciona após um breve delay
-            setTimeout(() => router.push('/'), 2000);
-        }
+        setAlertConfig({ 
+            show: true, 
+            title: 'Sucesso!', 
+            desc: 'Conta criada! Verifique seu e-mail ou faça login.' 
+        });
+        
+        setTimeout(() => router.push('/'), 2000);
     }
 
     return (
@@ -90,7 +69,7 @@ export default function SignUp() {
             )}
 
             <RegisterForm
-                title='Cadastre sua conta na Atlética'
+                title='Cadastre-se na A.A.A.A.C.H Store'
                 buttonMessage='Finalizar Cadastro'
                 onSubmitAction={handleSignUp}
             />
