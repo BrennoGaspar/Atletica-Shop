@@ -3,27 +3,24 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { CheckCircleIcon, ClipboardDocumentIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
-import Image from 'next/image'
+import { ClipboardDocumentIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 export default function PixCheckout() {
   const [cartItems, setCartItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [user, setUser] = useState<any>(null)
-  
-  // Estado para armazenar os dados reais do PIX vindos da API
   const [pixData, setPixData] = useState<{ qr_code: string; copy_paste: string; payment_id: number } | null>(null)
 
   const router = useRouter()
 
-  // Verify if the order is ready
+  // 1. MONITORAMENTO DO STATUS (POLLING)
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    // Só começa a monitorar se o pixData (QR Code) existir
     if (pixData?.payment_id) {
       interval = setInterval(async () => {
+        // O RLS deve permitir que o usuário autenticado leia seus próprios pedidos
         const { data } = await supabase
           .from('orders')
           .select('status')
@@ -34,42 +31,43 @@ export default function PixCheckout() {
           clearInterval(interval);
           router.push('/store/purchased');
         }
-      }, 3000); // Verifica a cada 3 segundos
+      }, 3000); 
     }
 
     return () => clearInterval(interval);
   }, [pixData, router]);
 
+  // 2. INICIALIZAÇÃO DA SESSÃO E CARRINHO
   useEffect(() => {
     async function initCheckout() {
-      const savedUser = localStorage.getItem('session:user')
-      if (!savedUser) {
-        router.push('/')
-        return
+      // Busca a sessão oficial do Supabase Auth para garantir o RLS
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (!authUser) {
+        router.push('/');
+        return;
       }
       
-      const parsedUser = JSON.parse(savedUser)
-      const userData = Array.isArray(parsedUser) ? parsedUser[0] : parsedUser
-      setUser(userData)
+      setUser(authUser);
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('cart_items')
         .select(`quantity, products (id, name, price)`)
-        .eq('user_id', userData.id)
+        .eq('user_id', authUser.id);
 
       if (data && data.length > 0) {
-        setCartItems(data)
+        setCartItems(data);
       } else {
-        // Se o carrinho estiver vazio, volta para a loja
-        router.push('/store')
+        router.push('/store');
       }
-      setLoading(false)
+      setLoading(false);
     }
-    initCheckout()
-  }, [router])
+    initCheckout();
+  }, [router]);
 
-  const subtotal = cartItems.reduce((acc, item) => acc + (item.products.price * item.quantity), 0)
+  const subtotal = cartItems.reduce((acc, item) => acc + (item.products.price * item.quantity), 0);
 
+  // 3. GERAÇÃO DO PAGAMENTO
   async function handleFinalizeOrder() {
     if (isProcessing) return;
     setIsProcessing(true);
@@ -85,7 +83,6 @@ export default function PixCheckout() {
         })
       });
 
-      // Se o servidor retornar erro (400, 500, etc), ele cai aqui
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Erro na comunicação com o servidor');
@@ -109,68 +106,26 @@ export default function PixCheckout() {
     }
   }
 
-  // async function handleConfirmPayment() {
-  //   if (!user || !pixData) return;
-
-  //   try {
-  //     // SET ORDER STATUS 'pendente'
-  //     const { data: order, error: orderError } = await supabase
-  //       .from('orders')
-  //       .insert({
-  //         user_id: user.id,
-  //         total_price: subtotal,
-  //         status: 'pendente',
-  //         payment_id: String(pixData.payment_id)
-  //       })
-  //       .select()
-  //       .single();
-
-  //     if (orderError) throw orderError;
-
-  //     // REGISTER ORDER'S ITEMS (Snapshot)
-  //     const orderItems = cartItems.map(item => ({
-  //       order_id: order.id,
-  //       product_name: item.products.name,
-  //       price_at_purchase: item.products.price,
-  //       quantity: item.quantity
-  //     }));
-
-  //     const { error: itemsError } = await supabase
-  //       .from('order_items')
-  //       .insert(orderItems);
-
-  //     if (itemsError) throw itemsError;
-
-  //     router.push('/store/purchased');
-
-  //   } catch (error: any) {
-  //     console.error("Erro ao registrar pedido pendente:", error);
-  //     alert("Erro ao salvar pedido: " + error.message);
-  //   }
-  // }
-
   if (loading) return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
     </div>
-  )
+  );
 
   return (
     <div className="bg-gray-800/50 min-h-screen p-4 md:p-8 flex flex-col items-center">
       <div className="max-w-md w-full bg-white rounded-3xl overflow-hidden shadow-2xl">
         
-        {/* Header da Página */}
         <div className="bg-indigo-600 p-6 text-white text-center">
           <h2 className="text-2xl font-extrabold uppercase tracking-tight">Finalizar Compra</h2>
           <p className="text-indigo-100 text-sm opacity-90">Pagamento via PIX</p>
         </div>
 
         <div className="p-8">
-          {/* Mostra o QR Code se já foi gerado, senão mostra o resumo */}
           {!pixData ? (
             <div className="space-y-6">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <h3 className="text-slate-500 text-xs font-bold uppercase mb-3">Resumo do Pedido</h3>
+                <h3 className="text-slate-500 text-xs font-bold uppercase mb-3 text-center tracking-widest">Resumo do Pedido</h3>
                 {cartItems.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm mb-1 text-slate-700">
                     <span>{item.quantity}x {item.products.name}</span>
@@ -193,7 +148,6 @@ export default function PixCheckout() {
             </div>
           ) : (
             <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              {/* QR CODE REAL */}
               <div className="bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-inner mb-6">
                 <img 
                   src={`data:image/jpeg;base64,${pixData.qr_code}`} 
@@ -202,7 +156,6 @@ export default function PixCheckout() {
                 />
               </div>
 
-              {/* COPIA E COLA */}
               <div className="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
                 <p className="text-[10px] uppercase font-black text-slate-400 mb-2 tracking-widest text-center">Código Copia e Cola</p>
                 <div className="flex items-center gap-3">
@@ -222,14 +175,9 @@ export default function PixCheckout() {
                   </button>
                 </div>
               </div>
-
-              {/* <button
-                onClick={handleConfirmPayment}
-                className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl hover:bg-green-600 transition shadow-lg shadow-green-100 flex items-center justify-center gap-2"
-              >
-                <CheckCircleIcon className="size-6" />
-                Já realizei o pagamento
-              </button> */}
+              <p className="text-xs text-indigo-600 font-bold animate-pulse text-center">
+                Aguardando confirmação do pagamento...
+              </p>
             </div>
           )}
 

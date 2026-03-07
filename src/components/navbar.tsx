@@ -1,6 +1,9 @@
+'use client'
+
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { Bars3Icon, BellIcon, ShoppingBagIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, ShoppingBagIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useRouter, usePathname } from 'next/navigation'
+import { supabase } from '@/lib/supabase' // Importante para o SignOut
 import Image from 'next/image'
 import minhaImagem from '@/assets/default_user.jpg'
 
@@ -11,72 +14,82 @@ function classNames(...classes: string[]) {
 interface NavBarProps {
     onOpenCart: () => void
     isAdmin: boolean
+    cartCount?: number // Adicionado o contador
 }
 
-export default function NavBar({ onOpenCart, isAdmin }: NavBarProps) {
-
+export default function NavBar({ onOpenCart, isAdmin, cartCount = 0 }: NavBarProps) {
     const router = useRouter() 
     const pathname = usePathname()
 
-    let navigation = []
-
-    isAdmin ? navigation = [
-            { name: 'Loja', href: ('/admin') },
-            { name: 'Compras', href: ('/admin/purchased') },
-        ] : 
-        navigation = [
+    // Configuração de Navegação baseada no Role
+    const navigation = isAdmin 
+        ? [
+            { name: 'Dashboard', href: '/admin' },
+            { name: 'Vendas', href: '/admin/purchased' },
+          ] 
+        : [
             { name: 'Loja', href: '/store' },
-            { name: 'Compras', href: ('/store/purchased') },
-        ]
-    
+            { name: 'Minhas Compras', href: '/store/purchased' },
+          ]
 
-    // LOG OUT SYSTEM   
-    function handleLogOut(){
-        localStorage.removeItem('session:user')
-        localStorage.removeItem('session:admin')
-        router.push('/')
-        window.location.reload()
+    // LOG OUT SYSTEM PROFISSIONAL
+    async function handleLogOut() {
+        try {
+            // 1. Encerra a sessão no Supabase Auth (Limpa cookies e JWT)
+            await supabase.auth.signOut()
+            
+            // 2. Limpa resquícios do localStorage
+            localStorage.removeItem('session:user')
+            localStorage.removeItem('session:admin')
+            
+            // 3. Redireciona para a home
+            router.push('/')
+            router.refresh() // Atualiza os Server Components
+        } catch (error) {
+            console.error("Erro ao sair:", error)
+        }
     }
 
     return (
         <Disclosure
             as="nav"
-            className="relative bg-gray-800/50 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10"
+            className="sticky top-0 z-40 bg-gray-900/80 backdrop-blur-md border-b border-white/5"
         >
-            <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="relative flex h-16 items-center justify-between">
+                    
+                    {/* Mobile Menu Button */}
                     <div className="absolute inset-y-0 left-0 flex items-center sm:hidden">
-                        {/* Mobile menu button*/}
-                        <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-indigo-500">
-                            <span className="absolute -inset-0.5" />
-                            <span className="sr-only">Open main menu</span>
+                        <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-none">
                             <Bars3Icon aria-hidden="true" className="block size-6 group-data-open:hidden" />
                             <XMarkIcon aria-hidden="true" className="hidden size-6 group-data-open:block" />
                         </DisclosureButton>
                     </div>
+
                     <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
-                        <div className="flex shrink-0 items-center">
+                        {/* Logo */}
+                        <div className="flex shrink-0 items-center cursor-pointer" onClick={() => router.push(isAdmin ? '/admin' : '/store')}>
                             <img
-                                alt="Your Company"
+                                alt="Atlética Shop"
                                 src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
                                 className="h-8 w-auto"
                             />
                         </div>
-                        <div className="hidden sm:ml-6 sm:block">
-                            <div className="flex space-x-4">
+
+                        {/* Desktop Links */}
+                        <div className="hidden sm:ml-8 sm:block">
+                            <div className="flex space-x-1">
                                 {navigation.map((item) => {
                                     const isCurrent = pathname === item.href
-
                                     return (
                                         <a
                                             key={item.name}
                                             href={item.href}
-                                            aria-current={isCurrent ? 'page' : undefined}
                                             className={classNames(
                                                 isCurrent 
-                                                    ? 'bg-gray-950 text-white' 
-                                                    : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                                                'rounded-md px-3 py-2 text-sm font-medium transition-colors'
+                                                    ? 'bg-indigo-500/10 text-indigo-400' 
+                                                    : 'text-gray-400 hover:bg-white/5 hover:text-white',
+                                                'rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200'
                                             )}
                                         >
                                             {item.name}
@@ -86,37 +99,48 @@ export default function NavBar({ onOpenCart, isAdmin }: NavBarProps) {
                             </div>
                         </div>
                     </div>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-                        <button
-                            type="button"
-                            onClick={onOpenCart}
-                            className="relative rounded-full p-1 text-gray-400 hover:text-white"
-                        >
-                            <ShoppingBagIcon aria-hidden="true" className="size-6" />
-                        </button>
 
-                        {/* Profile dropdown */}
+                    <div className="absolute inset-y-0 right-0 flex items-center gap-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+                        
+                        {/* Cart Button with Notification Badge */}
+                        {!isAdmin && (
+                            <button
+                                type="button"
+                                onClick={onOpenCart}
+                                className="relative rounded-full p-2 text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                            >
+                                <ShoppingBagIcon aria-hidden="true" className="size-6" />
+                                {cartCount > 0 && (
+                                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-black text-white ring-2 ring-gray-900">
+                                        {cartCount}
+                                    </span>
+                                )}
+                            </button>
+                        )}
+
+                        {/* Profile Dropdown */}
                         <Menu as="div" className="relative ml-3">
-                            <MenuButton className="relative flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
-                                <span className="absolute -inset-1.5" />
-                                <span className="sr-only">Abrir menu do usuário</span>
+                            <MenuButton className="relative flex rounded-full ring-2 ring-white/5 focus:outline-none hover:ring-indigo-500/50 transition-all">
                                 <Image
-                                    alt=""
+                                    alt="User Profile"
                                     src={minhaImagem}
-                                    className="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
+                                    className="size-8 rounded-full bg-gray-800"
                                 />
                             </MenuButton>
 
                             <MenuItems
                                 transition
-                                className="absolute right-0 z-10 mt-2 w-15 origin-top-right rounded-md bg-gray-800 py-1 outline -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-2xl bg-gray-800 p-2 shadow-2xl border border-white/10 ring-1 ring-black ring-opacity-5 transition focus:outline-none data-closed:scale-95 data-closed:opacity-0"
                             >
+                                <div className="px-3 py-2 border-b border-white/5 mb-1">
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Sessão Ativa</p>
+                                </div>
                                 <MenuItem>
                                     <button
                                         onClick={handleLogOut}
-                                        className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:outline-hidden w-full"
+                                        className="flex w-full items-center rounded-xl px-3 py-2 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors"
                                     >
-                                        Sair
+                                        Sair da Conta
                                     </button>
                                 </MenuItem>
                             </MenuItems>
@@ -125,8 +149,9 @@ export default function NavBar({ onOpenCart, isAdmin }: NavBarProps) {
                 </div>
             </div>
 
-            <DisclosurePanel className="sm:hidden">
-                <div className="space-y-1 px-2 pt-2 pb-3">
+            {/* Mobile Panel */}
+            <DisclosurePanel className="sm:hidden bg-gray-900/50 backdrop-blur-md">
+                <div className="space-y-1 px-4 pt-2 pb-6">
                     {navigation.map((item) => {
                         const isCurrent = pathname === item.href
                         return (
@@ -135,8 +160,8 @@ export default function NavBar({ onOpenCart, isAdmin }: NavBarProps) {
                                 as="a"
                                 href={item.href}
                                 className={classNames(
-                                    isCurrent ? 'bg-gray-950 text-white' : 'text-gray-300 hover:bg-white/5',
-                                    'block rounded-md px-3 py-2 text-base font-medium'
+                                    isCurrent ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400',
+                                    'block rounded-xl px-4 py-3 text-base font-bold'
                                 )}
                             >
                                 {item.name}
