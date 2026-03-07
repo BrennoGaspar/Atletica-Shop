@@ -11,6 +11,7 @@ export default function SignUp() {
     const [alertConfig, setAlertConfig] = useState({ show: false, title: '', desc: '' });
 
     async function handleSignUp(event: React.FormEvent<HTMLFormElement>) {
+
         event.preventDefault();
 
         const formData = new FormData(event.currentTarget);
@@ -21,6 +22,22 @@ export default function SignUp() {
         const passwordForm = formData.get('password') as string;
 
         const phoneForm = phoneFormRaw.replace(/\D/g, '');
+
+        // Validação de senha
+        const validatePassword = (password: string) => {
+            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+            return regex.test(password);
+            };
+
+            // Dentro do seu handleSignUp:
+            if (!validatePassword(passwordForm)) {
+            setAlertConfig({
+                show: true,
+                title: 'Senha Fraca',
+                desc: 'A senha deve ter 8+ caracteres, incluindo maiúsculas, números e símbolos (@$!%*?&).'
+            });
+            return;
+        }
 
         // 1. Criar o usuário no Supabase Auth
         // O Trigger no SQL vai pegar esses metadados e salvar na tabela 'users' automaticamente

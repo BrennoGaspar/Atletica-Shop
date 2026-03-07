@@ -84,7 +84,7 @@ export default function Home() {
 
       <div className="w-full max-w-md">
         <LoginForm
-          title='Acesse sua conta na Atlética'
+          title='Acesse sua conta A.A.A.A.C.H Store'
           button={true}
           buttonMessage='Entrar'
           onSubmitAction={handleLogin}
