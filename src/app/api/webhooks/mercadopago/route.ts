@@ -2,108 +2,77 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 
-const client = new MercadoPagoConfig({ 
-  accessToken: process.env.MP_ACCESS_TOKEN! 
-});
+const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { searchParams } = new URL(request.url);
     
-    // CATCH THE PAYMENT ID
-    const paymentId = body.data?.id || searchParams.get('id');
+    // O Mercado Pago envia notificações de vários tipos. Queremos apenas 'payment'.
+    if (body.type === 'payment') {
+      const paymentId = body.data.id;
+      const payment = new Payment(client);
+      const paymentData = await payment.get({ id: paymentId });
 
-    // VALIDATION
-    if (paymentId === '123456' || !paymentId) {
-      return NextResponse.json({ message: 'ID de teste ou vazio recebido' }, { status: 200 });
-    }
+      if (paymentData.status === 'approved') {
+        const userId = paymentData.metadata.user_id;
 
-    const payment = new Payment(client);
-    const paymentData = await payment.get({ id: paymentId });
-
-    if (paymentData.status === 'approved') {
-      const userId = paymentData.metadata.user_id;
-
-      // 1. ATTEMPT TO FIND THE ORDER CREATED BY FRONTEND
-      const { data: existingOrder } = await supabase
-        .from('orders')
-        .select('id, status')
-        .eq('payment_id', String(paymentId))
-        .single();
-
-      // 2. IF ORDER IS ALREADY MARKED AS 'pago', STOP HERE TO AVOID DUPLICATE STOCK DEDUCTION
-      if (existingOrder && existingOrder.status === 'pago') {
-        return NextResponse.json({ message: 'O pagamento já foi processado' }, { status: 200 });
-      }
-
-      // 3. UPDATE STATUS OR CREATE THE ORDER IF IT DOESN'T EXIST
-      if (existingOrder) {
-        // Just update existing pending order
-        const { error: updateError } = await supabase
+        // 1. Verificar se já processamos esse pagamento para não duplicar
+        const { data: existingOrder } = await supabase
           .from('orders')
-          .update({ status: 'pago' })
-          .eq('id', existingOrder.id);
+          .select('id')
+          .eq('payment_id', String(paymentId))
+          .single();
 
-        if (updateError) throw updateError;
-      } else {
-        // Fallback: Create order from scratch if frontend button wasn't clicked
-        const { data: cartItemsFallback } = await supabase
+        if (existingOrder) return NextResponse.json({ ok: true });
+
+        // 2. Buscar itens do carrinho para o snapshot do pedido e estoque
+        const { data: cartItems } = await supabase
           .from('cart_items')
           .select(`quantity, products (id, name, price, quantity)`)
           .eq('user_id', userId);
 
-        if (cartItemsFallback && cartItemsFallback.length > 0) {
-          const totalAmount = cartItemsFallback.reduce((acc, item: any) => acc + (item.products.price * item.quantity), 0);
+        if (cartItems && cartItems.length > 0) {
+          // 3. Criar o Pedido (Status: pago)
+          const total = cartItems.reduce((acc, item: any) => acc + (item.products.price * item.quantity), 0);
           
-          const { data: newOrder, error: orderError } = await supabase
+          const { data: order, error: orderErr } = await supabase
             .from('orders')
             .insert({
               user_id: userId,
-              total_price: totalAmount,
+              total_price: total,
               status: 'pago',
               payment_id: String(paymentId)
             })
             .select().single();
 
-          if (orderError) throw orderError;
+          if (orderErr) throw orderErr;
 
-          // Register items snapshot for the new order
-          for (const item of cartItemsFallback as any) {
+          // 4. Inserir itens e baixar estoque (Transaction-like loop)
+          for (const item of cartItems as any) {
+            // Registrar item no pedido
             await supabase.from('order_items').insert({
-              order_id: newOrder.id,
+              order_id: order.id,
               product_name: item.products.name,
               price_at_purchase: item.products.price,
               quantity: item.quantity
             });
+
+            // Subtrair do estoque real
+            await supabase.from('products')
+              .update({ quantity: item.products.quantity - item.quantity })
+              .eq('id', item.products.id);
           }
+
+          // 5. Limpar carrinho
+          await supabase.from('cart_items').delete().eq('user_id', userId);
         }
-      }
-
-      // 4. COMMON ACTIONS: UPDATE STOCK AND CLEAR CART
-      // This runs regardless of how the order was created/updated above
-      const { data: finalCartItems } = await supabase
-        .from('cart_items')
-        .select(`quantity, products (id, quantity)`)
-        .eq('user_id', userId);
-
-      if (finalCartItems && finalCartItems.length > 0) {
-        for (const item of finalCartItems as any) {
-          // Decrease stock
-          await supabase.from('products')
-            .update({ quantity: item.products.quantity - item.quantity })
-            .eq('id', item.products.id);
-        }
-
-        // Clear the user's cart
-        await supabase.from('cart_items').delete().eq('user_id', userId);
-        console.log(`O estoque foi atualizado e o carrinho do usuário: ${userId} foi limpo!`);
       }
     }
 
     return NextResponse.json({ received: true }, { status: 200 });
-  } catch (error: any) {
-    console.error('Erro crítico de webhook:', error.message);
-    return NextResponse.json({ error: 'Erro interno de processamento' }, { status: 200 });
+  } catch (error) {
+    console.error("Erro no Webhook:", error);
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }
