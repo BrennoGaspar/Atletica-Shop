@@ -17,7 +17,8 @@ export default function SignUp() {
         const nameForm = formData.get('name') as string;
         const ageForm = Number(formData.get('age'));
         const emailForm = formData.get('email') as string;
-        const phoneForm = formData.get('phone') as string;
+        const rawPhone = formData.get('phone') as string;
+        const phoneNumber = rawPhone.replace(/\D/g, '')
         const passwordForm = formData.get('password') as string;
 
         /**
@@ -31,7 +32,7 @@ export default function SignUp() {
                 data: {
                     full_name: nameForm,
                     age: ageForm,
-                    phone: phoneForm
+                    phone: phoneNumber
                 }
             }
         });
@@ -56,7 +57,7 @@ export default function SignUp() {
                     id: data.user.id, // O ID agora é o UUID do Auth
                     name: nameForm, 
                     email: emailForm, 
-                    phone: phoneForm, 
+                    phone: phoneNumber, 
                     age: ageForm 
                 });
 
