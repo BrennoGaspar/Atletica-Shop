@@ -45,7 +45,7 @@ export default function RegisterForm({ title, buttonMessage, onSubmitAction }: P
                     {title}
                 </h2>
                 <p className="mt-2 text-sm text-slate-400 font-medium uppercase tracking-widest">
-                    Crie seu perfil de atleta
+                    Crie seu perfil na loja
                 </p>
             </div>
 
