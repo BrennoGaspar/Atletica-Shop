@@ -44,6 +44,15 @@ O projeto utiliza uma arquitetura de **API Routes** do Next.js para manter a seg
 * `/api/checkout/pix`: Valida o carrinho e solicita a geração do pagamento ao Mercado Pago.
 * `/api/webhooks/mercadopago`: Recebe notificações IPN/Webhook para confirmar o pagamento e liberar o pedido de forma automatizada.
 
+---
+
+## 📸 Preview
+
+**Catálogo**
+<img width="1285" height="743" alt="AtleticaShop" src="https://github.com/user-attachments/assets/823e1583-db2d-4c03-85ae-9bc60bbff721" />
+
+**Histórico de Compras**
+<img width="1263" height="431" alt="image" src="https://github.com/user-attachments/assets/cb5e7953-be6e-4075-925d-a84473a7143a" />
 
 
 ---
